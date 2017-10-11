@@ -10,6 +10,7 @@ import gensim
 from gensim.models import word2vec
 from gensim.corpora.dictionary import Dictionary
 from sklearn.model_selection import train_test_split
+from keras import callbacks
 from keras.preprocessing import sequence
 from keras.models import Sequential,model_from_yaml, load_model
 from keras.layers.embeddings import Embedding
@@ -17,8 +18,7 @@ from keras.layers.recurrent import LSTM
 from keras.optimizers import SGD, Adam
 from keras.layers.core import Dense, Dropout, Activation
 np.random.seed(7)
-import sys
-sys.setrecursionlimit(1000000)
+
 
 # set parameters:
 vocab_dim = 128
@@ -35,22 +35,6 @@ def loadfile():
     neg = pd.read_excel("./data/text/neg.xls", header=None, index=None)
     pos = pd.read_excel("./data/text/pos.xls", header=None, index=None)
 
-    # # 分词
-    # def cw(x): return list(jieba.cut(x))
-    # neg['words'] = neg[0].apply(cw)
-    # pos['words'] = pos[0].apply(cw)
-
-    # # 数据合并
-    # y = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))))
-    # data = np.concatenate((neg['words'], pos['words']))
-    # # 切分训练数据
-    # x_train, x_test, y_train, y_test = train_test_split(data, y, test_size=0.2)
-
-    # np.save('svm_data/y_train.npy', y_train)
-    # np.save('svm_data/y_test.npy', y_test)
-
-    # return x_train, x_test
-
     combined = np.concatenate((pos[0], neg[0]))
     y = np.concatenate((np.ones(len(pos), dtype=int),
                         np.zeros(len(neg), dtype=int)))
@@ -58,12 +42,6 @@ def loadfile():
 
 
 def create_dictionaries(model=None, combined=None):
-    ''' Function does are number of Jobs:
-        1- Creates a word to index mapping
-        2- Creates a word to vector mapping
-        3- Transforms the Training and Testing Dictionaries
-
-    '''
     if (combined is not None) and (model is not None):
         gensim_dict = Dictionary()
         gensim_dict.doc2bow(model.wv.vocab.keys(), allow_update=True)
@@ -120,34 +98,26 @@ def train_lstm(input_dim, x_train, y_train, x_test, y_test):
 
     model = Sequential()
 
-    # model.add(Embedding(output_dim=vocab_dim, input_dim=n_symbols, mask_zero=True,
-    #                     weights=[embedding_weights], input_length=input_length))  # Adding Input Length
-    # model.add(LSTM(units=50,activation="sigmoid",recurrent_activation="hard_sigmoid"))
-    # model.add(Dropout(0.5))
-    # model.add(Dense(1))
-    # model.add(Activation('sigmoid'))
     print(input_dim)
-    model.add(Embedding(input_dim, vocab_dim, mask_zero=True, input_length=maxlen))
+    model.add(Embedding(input_dim,vocab_dim, mask_zero=True, input_length=maxlen))
     model.add(LSTM(128, activation="sigmoid",dropout=0.25,recurrent_dropout=0.25))
     model.add(Dense(64,activation='sigmoid'))
     model.add(Dropout(0.25))
     model.add(Dense(32,activation='sigmoid'))
     model.add(Dropout(0.25))
-    model.add(Dense(16,activation='sigmoid'))
-    model.add(Dropout(0.25))
+    # model.add(Dense(16,activation='relu'))
+    # model.add(Dropout(0.25))
     model.add(Dense(1,activation="sigmoid"))
 
-
-    # Test score: 0.263636458462
-    # Test accuracy: 0.916153483767
-
     print('编译模型...')   # 使用 adam优化
-    sgd = Adam(lr=0.003)
+    sgd = Adam(lr=0.001)
     model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
+    
+    tbCallBack= callbacks.TensorBoard(log_dir='./logs',histogram_freq=0, write_graph=True, write_images=True)
 
     print("训练...")
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=10,verbose=1, validation_data=(x_test, y_test))
-
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=9,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
+    # epochs=9 时精度最高：0.91852202948
     print("评估...")
     score, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size)
     print('Test score:', score)
@@ -194,11 +164,12 @@ def predictData():
         loaded_model_yaml = yaml_file.read()
     model = model_from_yaml(loaded_model_yaml)
     # 加载模型权重
-    model.load_weights("./data/text/lstm.h5")
+    model.load_weights("./data/text/lstm_weight.h5")
     print("model Loaded")
 
     model.compile(loss='binary_crossentropy',
                   optimizer='adam', metrics=['accuracy'])
+                  
     # 预测
     pred_result = model.predict_classes(texts)
     labels = [int(round(x[0])) for x in pred_result]
@@ -209,6 +180,6 @@ def predictData():
 
 if __name__ == '__main__':
     
-    # train()
+    train()
 
-    predictData()
+    # predictData()

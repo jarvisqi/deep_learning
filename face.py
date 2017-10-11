@@ -7,11 +7,11 @@ import cv2
 import pandas as pd
 import numpy as np
 from keras import regularizers
-from keras.models import Sequential
+from keras.models import Sequential, load_model, model_from_yaml
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras.optimizers import Adam, SGD
 from keras.callbacks import EarlyStopping
-from keras.utils import np_utils
+from keras.utils import np_utils, plot_model
 from keras.preprocessing import image
 from sklearn.model_selection import train_test_split
 
@@ -67,7 +67,8 @@ def build_model():
     #  kernel_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l1(0.001)))
     model.add(Conv2D(42, kernel_size=(3, 3), activation='relu'))
     #  kernel_regularizer=regularizers.l2(0.01), activity_regularizer=regularizers.l1(0.001)))
-    model.add(MaxPooling2D(pool_size=(2, 2)))   # 池化层往往在卷积层后面，通过池化来降低卷积层输出的特征向量，同时改善结果（不易出现过拟合）。
+    # 池化层往往在卷积层后面，通过池化来降低卷积层输出的特征向量，同时改善结果（不易出现过拟合）。
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
 
     model.add(Flatten())
@@ -101,7 +102,7 @@ def train_model(model: Sequential):
     # #           verbose=1, validation_data=(x_test, y_test))
 
     train_datagen = image.ImageDataGenerator(rescale=1. / 255, shear_range=0.2, zoom_range=0.2,
-                                       horizontal_flip=True)
+                                             horizontal_flip=True)
     validation_datagen = image.ImageDataGenerator(rescale=1. / 255)
     train_generator = train_datagen.flow_from_directory(
         './data/faces/', target_size=image_size, batch_size=batch_size, class_mode='categorical', shuffle=True)
@@ -122,9 +123,25 @@ def train_model(model: Sequential):
     model.save_weights('./models/face_weight.h5')
 
 
+def pred_data():
+
+    with open('./models/face.yaml') as yamlfile:
+        loaded_model_yaml = yamlfile.read()
+    model = model_from_yaml(loaded_model_yaml)
+    model.load_weights('./models/face_weight.h5')
+
+    sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
+    model.compile(optimizer=sgd, loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    
+    plot_model(model,to_file='./models/face_model.png')
+
+
 if __name__ == '__main__':
 
-    model = build_model()
-    train_model(model)
+    # model = build_model()
+    # train_model(model)
 
     # load_data()
+
+    pred_data()

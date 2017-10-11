@@ -1,8 +1,12 @@
 import os
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
+from keras import callbacks
 import numpy as np
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+import tensorflow as tf
+import keras.backend.tensorflow_backend as KTF
 
 
 def main():
