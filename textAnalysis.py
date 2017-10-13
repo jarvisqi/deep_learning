@@ -16,7 +16,7 @@ from keras.models import Sequential,model_from_yaml, load_model
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
 from keras.optimizers import SGD, Adam
-from keras.layers.core import Dense, Dropout, Activation
+from keras.layers import Dense, Dropout, Activation
 np.random.seed(7)
 
 
