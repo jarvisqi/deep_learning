@@ -139,9 +139,9 @@ def pred_data():
 
 if __name__ == '__main__':
 
-    # model = build_model()
-    # train_model(model)
+    model = build_model()
+    train_model(model)
 
     # load_data()
 
-    pred_data()
+    # pred_data()
