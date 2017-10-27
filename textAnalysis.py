@@ -10,35 +10,35 @@ import gensim
 from gensim.models import word2vec
 from gensim.corpora.dictionary import Dictionary
 from sklearn.model_selection import train_test_split
-from keras import callbacks
-from keras.preprocessing import sequence
+from keras import callbacks, utils
+from keras.preprocessing import text,sequence
 from keras.models import Sequential,model_from_yaml, load_model
 from keras.layers.embeddings import Embedding
 from keras.layers.recurrent import LSTM
-from keras.optimizers import SGD, Adam
 from keras.layers import Dense, Dropout, Activation
+from keras.optimizers import SGD, Adam
+
+
+
 np.random.seed(7)
-
-
 # set parameters:
-vocab_dim = 128
-maxlen = 120
+MAX_SEQUENCE_LENGTH = 100   # 每条语句最大长度
+EMBEDDING_DIM = 200         # 词向量空间维度
 window_size = 7
-batch_size = 256
+batch_size = 128
 cpu_count = multiprocessing.cpu_count()
 
 
-def loadfile():
+def load_data():
     """
     加载数据
     """
     neg = pd.read_excel("./data/text/neg.xls", header=None, index=None)
     pos = pd.read_excel("./data/text/pos.xls", header=None, index=None)
 
-    combined = np.concatenate((pos[0], neg[0]))
-    y = np.concatenate((np.ones(len(pos), dtype=int),
-                        np.zeros(len(neg), dtype=int)))
-    return combined, y
+    data = np.concatenate((pos[0], neg[0]))
+    labels = np.concatenate((np.ones(len(pos), dtype=int),np.zeros(len(neg), dtype=int)))
+    return data, labels
 
 
 def create_dictionaries(model=None, combined=None):
@@ -64,69 +64,56 @@ def create_dictionaries(model=None, combined=None):
             return data
         combined = parse_dataset(combined)
         # 每个句子所含词语对应的索引，所以句子中含有频数小于10的词语，索引为0
-        combined = sequence.pad_sequences(combined, maxlen=maxlen)
+        combined = sequence.pad_sequences(combined, maxlen=MAX_SEQUENCE_LENGTH)
         return w2indx, w2vec, combined
     else:
-        print('No data provided...')
+        print('No data')
 
 
 # 创建词语字典，并返回每个词语的索引，词向量，以及每个句子所对应的词语索引
 def word2vec_train(text):
 
-    model = word2vec.Word2Vec(size=vocab_dim, min_count=10, window=window_size, workers=cpu_count,
-                              iter=1)
+    model = word2vec.Word2Vec(size=EMBEDDING_DIM, min_count=10, window=window_size, workers=cpu_count,iter=1)
     model.build_vocab(text)
     model.train(text, total_examples=model.corpus_count, epochs=model.iter)
-    model.save('./data/text/Word2vec_model.model')
-    index_dict, word_vectors, text = create_dictionaries(
-        model=model, combined=text)
+    model.save('./models/Word2vec_model.model')
+    index_dict, word_vectors, text = create_dictionaries(model=model, combined=text)
     return index_dict, word_vectors, text
 
 
-def get_data(index_dict, word_vectors, inputTexts, y):
-
-    input_dim = len(index_dict) + 1              # 所有单词的索引数，频数小于10的词语索引为0，所以加1
-    x_train, x_test, y_train, y_test = train_test_split(inputTexts, y, test_size=0.1)
-    print(x_train.shape, y_train.shape)
-
-    return input_dim, x_train, y_train, x_test, y_test
-
 
 # 定义网络结构
-def train_lstm(input_dim, x_train, y_train, x_test, y_test):
+def train_model(input_dim,x_train, y_train, x_test, y_test):
+    print(input_dim)    
     print('设计模型 Model...')
 
     model = Sequential()
 
-    print(input_dim)
-    model.add(Embedding(input_dim,vocab_dim, mask_zero=True, input_length=maxlen))
-    model.add(LSTM(128, activation="sigmoid",dropout=0.25,recurrent_dropout=0.25))
-    model.add(Dense(64,activation='sigmoid'))
-    model.add(Dropout(0.25))
-    model.add(Dense(32,activation='sigmoid'))
-    model.add(Dropout(0.25))
-    # model.add(Dense(16,activation='relu'))
-    # model.add(Dropout(0.25))
+    model.add(Embedding(input_dim,EMBEDDING_DIM, input_length=MAX_SEQUENCE_LENGTH))
+    model.add(LSTM(128, activation="relu",dropout=0.3,recurrent_dropout=0.3))
+    model.add(Dense(256,activation='relu'))
+    model.add(Dropout(0.5))
+
     model.add(Dense(1,activation="sigmoid"))
 
     print('编译模型...')   # 使用 adam优化
-    sgd = Adam(lr=0.001)
+    sgd = Adam(lr=0.0003)
     model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
     
     tbCallBack= callbacks.TensorBoard(log_dir='./logs',histogram_freq=0, write_graph=True, write_images=True)
 
     print("训练...")
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=9,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
-    # epochs=9 时精度最高：0.91852202948
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=12,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
+    # epochs=16 时精度最高：0.9209,  921837993421 
     print("评估...")
     score, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size)
     print('Test score:', score)
     print('Test accuracy:', accuracy)
 
     yaml_string = model.to_yaml()
-    with open('./data/text/lstm.yaml', 'w') as outfile:
+    with open('./models/lstm.yaml', 'w') as outfile:
         outfile.write(yaml_string)
-    model.save_weights('./data/text/lstm.h5')
+    model.save_weights('./models/lstm.h5')
 
 
 def train():
@@ -135,17 +122,36 @@ def train():
 
     """
     print('Loading Data...')
-    combined, y = loadfile()
-    print(len(combined), len(y))
-    print('分词...')
-    combined = [jieba.lcut(document.replace('\n', ''))for document in combined]
-    print('训练 Word2vec model...')
-    index_dict, word_vectors, combined = word2vec_train(combined)
-    n_symbols, x_train, y_train, x_test, y_test = get_data(
-        index_dict, word_vectors, combined, y)
+    inputTexts, labels = load_data()
+    print(inputTexts.shape, labels.shape)
+
+    print('segment...')
+
+    # seg_data = [jieba.lcut(document.replace('\n', ''))for document in inputTexts]
+    # print('word2vec...')
+    # index_dict, word_vectors, data = word2vec_train(seg_data)
+    # n_symbols = len(index_dict) + 1   
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2)
+    # print(x_train.shape, y_train.shape)
+
+    # train_model(n_symbols, x_train, y_train, x_test, y_test)
+
+    texts=[]
+    for doc in inputTexts:
+        seg_doc = jieba.lcut(doc.replace('\n', ''))
+        d=merge_doc(seg_doc)
+        texts.append(d)
+    tokenizer = text.Tokenizer()                            # 分词MAX_NB_WORDS
+    tokenizer.fit_on_texts(texts)
+    text_sequences = tokenizer.texts_to_sequences(texts)    # 受num_words影响
+    word_index = tokenizer.word_index                       # 词_索引
+    data = sequence.pad_sequences(text_sequences, maxlen=MAX_SEQUENCE_LENGTH)
+
+    input_dim=len(word_index) + 1
+    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.15)
     print(x_train.shape, y_train.shape)
 
-    train_lstm(n_symbols, x_train, y_train, x_test, y_test)
+    train_model(input_dim, x_train, y_train, x_test, y_test)
 
 
 def predictData():
@@ -157,14 +163,14 @@ def predictData():
                    "服务态度好", "差评，不要买", "发货速度超级快！", "一般吧， 价格还不便宜"]
 
     texts = [jieba.lcut(document.replace('\n', '')) for document in input_texts]
-    word_model = word2vec.Word2Vec.load('./data/text/Word2vec_model.model')
+    word_model = word2vec.Word2Vec.load('./data/models/Word2vec_model.model')
     w2indx, w2vec, texts = create_dictionaries(word_model, texts)
     # 加载网络结构
-    with open('./data/text/lstm.yaml', 'r') as yaml_file:
+    with open('./data/models/lstm.yaml', 'r') as yaml_file:
         loaded_model_yaml = yaml_file.read()
     model = model_from_yaml(loaded_model_yaml)
     # 加载模型权重
-    model.load_weights("./data/text/lstm_weight.h5")
+    model.load_weights("./data/models/lstm.h5")
     print("model Loaded")
 
     model.compile(loss='binary_crossentropy',
@@ -177,6 +183,12 @@ def predictData():
     for i in range(len(pred_result)):
         print('{} -------- {}'.format(label2word[labels[i]], input_texts[i]))
 
+
+def merge_doc(x):
+    doc=''
+    for d in x:
+        doc +=d+' '
+    return doc
 
 if __name__ == '__main__':
     

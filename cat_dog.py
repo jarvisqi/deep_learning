@@ -11,9 +11,10 @@ from sklearn.model_selection import train_test_split
 from keras.applications.resnet50 import preprocess_input, decode_predictions
 
 np.random.seed(7)
-image_size = (128, 128)
+img_h, img_w = 150, 150
+image_size = (150, 150)
 nbatch_size = 128
-nepochs = 64
+nepochs = 48
 nb_classes = 2
 
 
@@ -36,48 +37,46 @@ def load_data():
     data = np.array(images)
     labels = np.array(labels)
 
-    # labels = np.reshape(labels, (len(labels), 1))
-    labels = np_utils.to_categorical(labels, nb_classes)
-
+    labels = np_utils.to_categorical(labels, 2)
     return data, labels
 
 
 def main():
     model = Sequential()
-    model.add(Conv2D(32, kernel_size=(5, 5),input_shape=(128, 128, 3), activation='relu',padding='same'))
+
+    model.add(Conv2D(32, kernel_size=(5, 5), input_shape=(img_h, img_h, 3), activation='relu', padding='same'))
     model.add(MaxPool2D())
     model.add(Dropout(0.3))
 
-    model.add(Conv2D(64, kernel_size=(5,5), activation='relu',padding='same'))
+    model.add(Conv2D(64, kernel_size=(5, 5), activation='relu', padding='same'))
     model.add(MaxPool2D())
     model.add(Dropout(0.3))
 
-    model.add(Conv2D(128, kernel_size=(5, 5), activation='relu',padding='same'))
+    model.add(Conv2D(128, kernel_size=(5, 5), activation='relu', padding='same'))
     model.add(MaxPool2D())
     model.add(Dropout(0.5))
 
-    model.add(Conv2D(128, kernel_size=(5, 5), activation='relu',padding='same'))
+    model.add(Conv2D(256, kernel_size=(5, 5), activation='relu', padding='same'))
     model.add(MaxPool2D())
     model.add(Dropout(0.5))
 
     model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(nb_classes, activation='softmax'))
+
+    model.add(Dense(2, activation='softmax'))
 
     model.summary()
 
     print("compile.......")
-    sgd = Adam(lr=0.0001)
-    model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
-    
+    sgd = Adam(lr=0.0003)
+    model.compile(loss='binary_crossentropy',optimizer=sgd, metrics=['accuracy'])
+
     print("load_data......")
     images, lables = load_data()
-    images /=255
-    x_train, x_test, y_train, y_test = train_test_split(images, lables, test_size=0.15)
-    print("x_train:",x_train.shape)
+    images /= 255
+    x_train, x_test, y_train, y_test = train_test_split(images, lables, test_size=0.2)
+    print(x_train.shape,y_train.shape)
 
     print("train.......")
     tbCallbacks = callbacks.TensorBoard(log_dir='./logs', histogram_freq=1, write_graph=True, write_images=True)
@@ -88,38 +87,38 @@ def main():
     print('scroe:', scroe, 'accuracy:', accuracy)
 
     yaml_string = model.to_yaml()
-    with open('./data/text/cat_dog.yaml', 'w') as outfile:
+    with open('./models/cat_dog.yaml', 'w') as outfile:
         outfile.write(yaml_string)
-    model.save_weights('./data/text/cat_dog.h5')
+    model.save_weights('./models/cat_dog.h5')
+
 
 def pred_data():
-    
+
     with open('./models/cat_dog.yaml') as yamlfile:
         loaded_model_yaml = yamlfile.read()
     model = model_from_yaml(loaded_model_yaml)
     model.load_weights('./models/cat_dog.h5')
 
-    sgd = Adam(lr=0.0001)
-    model.compile( loss='categorical_crossentropy',optimizer=sgd,metrics=['accuracy'])
+    sgd = Adam(lr=0.0003)
+    model.compile(loss='categorical_crossentropy',optimizer=sgd, metrics=['accuracy'])
 
+    images = []
+    path='./data/test/'
+    for f in os.listdir(path):
+        img = image.load_img(path + f, target_size=image_size)
+        img_array = image.img_to_array(img)
 
-    img = image.load_img('./data/c0.jpg', target_size=image_size)
-    img_array = image.img_to_array(img)
-    x = np.expand_dims(img_array, axis=0)
-    x = preprocess_input(x)
+        x = np.expand_dims(img_array, axis=0)
+        x = preprocess_input(x)
+        result = model.predict_classes(x,verbose=0)
 
-    pred = model.predict(x)
-    print('pred',pred)
-    #给出类别预测：0或者1
-    result = model.predict_classes(x)   
-
-    print('\n result',result[0])
-
+        print(f,result[0])
+    
 
 if __name__ == '__main__':
 
-    main()
+    # main()
 
-    # pred_data()
+    pred_data()
 
     # load_data()
