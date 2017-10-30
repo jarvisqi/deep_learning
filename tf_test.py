@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 from sklearn import preprocessing
 
 
@@ -29,15 +29,12 @@ def main():
     sess.run(init)
 
     # 拟合平面
-    for step in range(0, 201):
+    for step in range(0, 100):
         sess.run(train)
         if step % 20 == 0:
             print(step, sess.run(W), sess.run(b))
 
 
 if __name__ == '__main__':
-    # main()
-
-    enc = preprocessing.OneHotEncoder()
-    enc.fit([[0, 0, 3], [1, 1, 0], [0, 2, 1], [1, 0, 2]])
-    print(enc.transform([[0, 1, 3]]).toarray())
+    
+    main()

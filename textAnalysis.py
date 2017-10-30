@@ -46,8 +46,7 @@ def create_dictionaries(model=None, combined=None):
         gensim_dict = Dictionary()
         gensim_dict.doc2bow(model.wv.vocab.keys(), allow_update=True)
         w2indx = {v: k + 1 for k, v in gensim_dict.items()}  # 所有频数超过10的词语的索引
-        w2vec = {word: model[word]
-                 for word in w2indx.keys()}  # 所有频数超过10的词语的词向量
+        w2vec = {word: model[word] for word in w2indx.keys()}  # 所有频数超过10的词语的词向量
 
         def parse_dataset(combined):
             ''' Words become integers
@@ -90,7 +89,10 @@ def train_model(input_dim,x_train, y_train, x_test, y_test):
     model = Sequential()
 
     model.add(Embedding(input_dim,EMBEDDING_DIM, input_length=MAX_SEQUENCE_LENGTH))
-    model.add(LSTM(128, activation="relu",dropout=0.3,recurrent_dropout=0.3))
+    model.add(LSTM(256, activation="relu"))
+    model.add(Dropout(0.3))
+    model.add(Dense(512,activation='relu'))
+    model.add(Dropout(0.5))
     model.add(Dense(256,activation='relu'))
     model.add(Dropout(0.5))
 
@@ -103,11 +105,11 @@ def train_model(input_dim,x_train, y_train, x_test, y_test):
     tbCallBack= callbacks.TensorBoard(log_dir='./logs',histogram_freq=0, write_graph=True, write_images=True)
 
     print("训练...")
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=12,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=3,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
     # epochs=16 时精度最高：0.9209,  921837993421 
     print("评估...")
     score, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size)
-    print('Test score:', score)
+    print('\nTest score:', score)
     print('Test accuracy:', accuracy)
 
     yaml_string = model.to_yaml()
@@ -131,7 +133,7 @@ def train():
     # print('word2vec...')
     # index_dict, word_vectors, data = word2vec_train(seg_data)
     # n_symbols = len(index_dict) + 1   
-    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2)
+    # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.15)
     # print(x_train.shape, y_train.shape)
 
     # train_model(n_symbols, x_train, y_train, x_test, y_test)
@@ -159,24 +161,23 @@ def predictData():
     使用模型预测真实数据
 
     """
-    input_texts = ["价格不便宜，花了190元。", "垃圾", "东西很好，超值",
-                   "服务态度好", "差评，不要买", "发货速度超级快！", "一般吧， 价格还不便宜"]
+    input_texts = ["虽然价格很贵，但是推荐大家购买"]
 
     texts = [jieba.lcut(document.replace('\n', '')) for document in input_texts]
-    word_model = word2vec.Word2Vec.load('./data/models/Word2vec_model.model')
+    word_model = word2vec.Word2Vec.load('./models/Word2vec_model.model')
     w2indx, w2vec, texts = create_dictionaries(word_model, texts)
     # 加载网络结构
-    with open('./data/models/lstm.yaml', 'r') as yaml_file:
+    with open('./models/lstm.yaml', 'r') as yaml_file:
         loaded_model_yaml = yaml_file.read()
     model = model_from_yaml(loaded_model_yaml)
     # 加载模型权重
-    model.load_weights("./data/models/lstm.h5")
+    model.load_weights("./models/lstm.h5")
     print("model Loaded")
 
-    model.compile(loss='binary_crossentropy',
-                  optimizer='adam', metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy',optimizer='adam', metrics=['accuracy'])
                   
-    # 预测
+    utils.plot_model(model,to_file='./models/lstm_model.png')
+    # # 预测
     pred_result = model.predict_classes(texts)
     labels = [int(round(x[0])) for x in pred_result]
     label2word = {1: '正面', 0: '负面'}
