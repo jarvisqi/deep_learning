@@ -27,6 +27,21 @@ nb_epoch = 32
 labelName = []
 
 
+
+def preprocess():
+    '''
+    数据预处理
+    '''
+    count = 0
+    total = 0
+    path = './data/faces/'
+    for f in os.listdir(path):
+        name = f.split(' ')[0]
+        os.makedirs(path + name)
+        oldPath = path + f
+        newPath = path + name + '/' + f
+        shutil.copyfile(oldPath, newPath)
+
 def load_data():
     path = './data/faces/'
     count = [path + x for x in os.listdir(path) if os.path.isdir(path + x)]
