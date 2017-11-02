@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-# 放假预测，回归任务
+# 房价预测，回归任务
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import pandas as pd
