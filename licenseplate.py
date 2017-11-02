@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+# 多输出车牌识别
+
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import numpy as np
@@ -13,6 +15,7 @@ from keras.preprocessing import image
 import matplotlib
 from matplotlib import pyplot as plt
 from IPython.display import SVG
+import cv2
 
 np.random.seed(5)
 image_size = (272, 72)
@@ -29,7 +32,7 @@ def gen_plate():
     """
     G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./images/NoPlates")
     while True:
-        l_plateStr, l_plateImg = G.genBatch(nbatch_size, 2, range(31, 65), "./images/plate", image_size)
+        l_plateStr, l_plateImg = G.genBatch(1, 2, range(31, 65), "./images/plate", image_size)
         X = np.array(l_plateImg, dtype=np.uint8)
         ytmp = np.array(list(map(lambda x: [M_strIdx[a] for a in list(x)], l_plateStr)), dtype=np.uint8)
         y = np.zeros([ytmp.shape[1], nbatch_size, len(chars)])
@@ -80,20 +83,19 @@ def main():
 
 
 def  predict_plate():
-    # matplotlib.rcParams['axes.unicode_minus']=False  
+    # G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./images/NoPlates")
+    # l_plateStr, l_plateImg = G.genBatch(10, 2, range(31, 65), "./images/plate_test", image_size)
+    # x_test = np.array(l_plateImg, dtype=np.uint8)
+    # print(x_test.shape)
 
-    G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./images/NoPlates")
-    l_plateStr, l_plateImg = G.genBatch(1, 2, range(31, 65), "./images/plate_test", image_size)
-    x_test = np.array(l_plateImg, dtype=np.uint8)
-
+    img = cv2.imread("./predict_img/B755QT.jpg")  
+    img = cv2.resize(img, image_size)
+    x_test = np.array([img], dtype=np.uint8)
     print(x_test.shape)
 
     model = load_model('./models/licenseplate.h5')
-    y_pred = model.predict(x_test)
-    y_pred = np.argmax(np.array(y_pred), 2)
-    result =''.join([chars[y[0]] for y in y_pred])
-
-    print(result)
+    l_titles = list(map(lambda x: "".join([chars[xx] for xx in x]), np.argmax(np.array(model.predict(x_test)), 2).T))
+    print(l_titles)
 
 
 
@@ -102,4 +104,5 @@ if __name__ == '__main__':
     # main()
 
     predict_plate()
+
 

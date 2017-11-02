@@ -103,19 +103,19 @@ def train_model(input_dim,x_train, y_train, x_test, y_test):
     model.compile(loss='binary_crossentropy', optimizer=sgd, metrics=['accuracy'])
     
     tbCallBack= callbacks.TensorBoard(log_dir='./logs',histogram_freq=0, write_graph=True, write_images=True)
-
+    # best_model = ModelCheckpoint("./models/text_lstm.h5", monitor='val_loss', verbose=0, save_best_only=True)
     print("训练...")
     model.fit(x_train, y_train, batch_size=batch_size, epochs=3,verbose=1, validation_data=(x_test, y_test),callbacks=[tbCallBack])
-    # epochs=16 时精度最高：0.9209,  921837993421 
+    # 
     print("评估...")
     score, accuracy = model.evaluate(x_test, y_test, batch_size=batch_size)
     print('\nTest score:', score)
     print('Test accuracy:', accuracy)
 
     yaml_string = model.to_yaml()
-    with open('./models/lstm.yaml', 'w') as outfile:
+    with open('./models/text_lstm.yaml', 'w') as outfile:
         outfile.write(yaml_string)
-    model.save_weights('./models/lstm.h5')
+    model.save_weights('./models/text_lstm.h5')
 
 
 def train():
@@ -135,20 +135,9 @@ def train():
     # n_symbols = len(index_dict) + 1   
     # x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.15)
     # print(x_train.shape, y_train.shape)
-
     # train_model(n_symbols, x_train, y_train, x_test, y_test)
 
-    texts=[]
-    for doc in inputTexts:
-        seg_doc = jieba.lcut(doc.replace('\n', ''))
-        d=merge_doc(seg_doc)
-        texts.append(d)
-    tokenizer = text.Tokenizer()                            # 分词MAX_NB_WORDS
-    tokenizer.fit_on_texts(texts)
-    text_sequences = tokenizer.texts_to_sequences(texts)    # 受num_words影响
-    word_index = tokenizer.word_index                       # 词_索引
-    data = sequence.pad_sequences(text_sequences, maxlen=MAX_SEQUENCE_LENGTH)
-
+    word_index, data = wordtoVect(inputTexts)
     input_dim=len(word_index) + 1
     x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.15)
     print(x_train.shape, y_train.shape)
@@ -156,43 +145,62 @@ def train():
     train_model(input_dim, x_train, y_train, x_test, y_test)
 
 
+def wordtoVect(inputTexts):
+    texts=[]
+    for doc in inputTexts:
+        seg_doc = jieba.lcut(doc.replace('\n', ''))
+        d =" ".join(seg_doc)
+        texts.append(d)
+    tokenizer = text.Tokenizer()                            # 分词MAX_NB_WORDS
+    tokenizer.fit_on_texts(texts)
+    text_sequences = tokenizer.texts_to_sequences(texts)    # 受num_words影响
+    word_index = tokenizer.word_index                       # 词_索引
+    data = sequence.pad_sequences(text_sequences, maxlen=MAX_SEQUENCE_LENGTH)
+
+    return word_index, data
+
+
 def predictData():
     """
     使用模型预测真实数据
 
     """
-    input_texts = ["虽然价格很贵，但是推荐大家购买"]
+    input_texts = ["价格太贵，质量一般","质量有问题，不推荐买","售后太垃圾了","哈哈哈哈哈哈哈"]
 
     texts = [jieba.lcut(document.replace('\n', '')) for document in input_texts]
     word_model = word2vec.Word2Vec.load('./models/Word2vec_model.model')
     w2indx, w2vec, texts = create_dictionaries(word_model, texts)
-    # 加载网络结构
-    with open('./models/lstm.yaml', 'r') as yaml_file:
-        loaded_model_yaml = yaml_file.read()
-    model = model_from_yaml(loaded_model_yaml)
-    # 加载模型权重
-    model.load_weights("./models/lstm.h5")
-    print("model Loaded")
+    print(texts)
 
-    model.compile(loss='binary_crossentropy',optimizer='adam', metrics=['accuracy'])
-                  
-    utils.plot_model(model,to_file='./models/lstm_model.png')
+    _, _texts = wordtoVect(input_texts)
+    print(_texts)
+    model = load_model()
     # # 预测
-    pred_result = model.predict_classes(texts)
+    # pred_result = model.predict_classes(texts)
+    pred_result = model.predict(_texts)
+    print(pred_result)
     labels = [int(round(x[0])) for x in pred_result]
     label2word = {1: '正面', 0: '负面'}
     for i in range(len(pred_result)):
-        print('{} -------- {}'.format(label2word[labels[i]], input_texts[i]))
+        print('{0} -------- {1}'.format(label2word[labels[i]], input_texts[i]))
 
+def load_model():
+    # 加载网络结构
+    with open('./models/text_lstm.yaml', 'r') as yaml_file:
+        loaded_model_yaml = yaml_file.read()
+    model = model_from_yaml(loaded_model_yaml)
+    # 加载模型权重
+    model.load_weights("./models/text_lstm.h5")
+    print("model Loaded")
+    model.compile(loss='binary_crossentropy',optimizer='adam', metrics=['accuracy'])
+                  
+    utils.plot_model(model,to_file='./models/text_lstm_model.png')
 
-def merge_doc(x):
-    doc=''
-    for d in x:
-        doc +=d+' '
-    return doc
+    return model
+    
 
 if __name__ == '__main__':
     
-    train()
+    # train()
 
-    # predictData()
+    predictData()
