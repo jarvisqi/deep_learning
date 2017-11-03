@@ -137,7 +137,7 @@ def train():
     # print(x_train.shape, y_train.shape)
     # train_model(n_symbols, x_train, y_train, x_test, y_test)
 
-    word_index, data = wordtoVect(inputTexts)
+    word_index, data = train_wordtoVect(inputTexts)
     input_dim=len(word_index) + 1
     x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.15)
     print(x_train.shape, y_train.shape)
@@ -145,9 +145,12 @@ def train():
     train_model(input_dim, x_train, y_train, x_test, y_test)
 
 
-def wordtoVect(inputTexts):
+def train_wordtoVect(train_inputTexts):
+    """
+    训练词向量函数
+    """
     texts=[]
-    for doc in inputTexts:
+    for doc in train_inputTexts:
         seg_doc = jieba.lcut(doc.replace('\n', ''))
         d =" ".join(seg_doc)
         texts.append(d)
@@ -160,41 +163,60 @@ def wordtoVect(inputTexts):
     return word_index, data
 
 
+def predict_wordtoVect(valid_inputTexts):
+    """
+    预测词向量函数
+    """
+    train_texts, labels = load_data()
+    train_texts = [" ".join(jieba.lcut(doc)) for doc in train_texts]
+    tokenizer = text.Tokenizer()
+    tokenizer.fit_on_texts(train_texts)
+
+    pred_texts = [" ".join(jieba.lcut(doc)) for doc in valid_inputTexts]
+    print(pred_texts)
+    text_seq = tokenizer.texts_to_sequences(pred_texts)
+    valid_data = sequence.pad_sequences(text_seq, maxlen=MAX_SEQUENCE_LENGTH)
+
+    return valid_data
+
+
+
 def predictData():
     """
     使用模型预测真实数据
 
     """
-    input_texts = ["价格太贵，质量一般","质量有问题，不推荐买","售后太垃圾了","哈哈哈哈哈哈哈"]
+    input_texts = ["很好很满意","不好不满意","质量有问题","商家态度很差","售后很渣，渣渣"]
 
-    texts = [jieba.lcut(document.replace('\n', '')) for document in input_texts]
-    word_model = word2vec.Word2Vec.load('./models/Word2vec_model.model')
-    w2indx, w2vec, texts = create_dictionaries(word_model, texts)
-    print(texts)
+    # word_model = word2vec.Word2Vec.load('./models/Word2vec_model.model')
+    # w2indx, w2vec, texts = create_dictionaries(word_model, texts)
+    # print(texts)
 
-    _, _texts = wordtoVect(input_texts)
-    print(_texts)
-    model = load_model()
+    texts = predict_wordtoVect(input_texts)
+
+    model = get_model()
     # # 预测
-    # pred_result = model.predict_classes(texts)
-    pred_result = model.predict(_texts)
+    pred_result = model.predict_classes(texts)
     print(pred_result)
     labels = [int(round(x[0])) for x in pred_result]
     label2word = {1: '正面', 0: '负面'}
     for i in range(len(pred_result)):
         print('{0} -------- {1}'.format(label2word[labels[i]], input_texts[i]))
 
-def load_model():
-    # 加载网络结构
-    with open('./models/text_lstm.yaml', 'r') as yaml_file:
-        loaded_model_yaml = yaml_file.read()
-    model = model_from_yaml(loaded_model_yaml)
-    # 加载模型权重
-    model.load_weights("./models/text_lstm.h5")
-    print("model Loaded")
-    model.compile(loss='binary_crossentropy',optimizer='adam', metrics=['accuracy'])
+
+def get_model():
+    # # 加载网络结构
+    # with open('./models/text_lstm.yaml', 'r') as yaml_file:
+    #     loaded_model_yaml = yaml_file.read()
+    # model = model_from_yaml(loaded_model_yaml)
+    # # 加载模型权重
+    # model.load_weights("./models/text_lstm.h5")
+    # print("model Loaded")
+    # model.compile(loss='binary_crossentropy',optimizer='adam', metrics=['accuracy'])
                   
-    utils.plot_model(model,to_file='./models/text_lstm_model.png')
+    # utils.plot_model(model,to_file='./models/text_lstm_model.png')
+
+    model = load_model("./models/text_lstm_full.h5")
 
     return model
     

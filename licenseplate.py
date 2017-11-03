@@ -88,7 +88,7 @@ def  predict_plate():
     # x_test = np.array(l_plateImg, dtype=np.uint8)
     # print(x_test.shape)
 
-    img = cv2.imread("./predict_img/B755QT.jpg")  
+    img = cv2.imread("./predict_img/TF521.jpg")  
     img = cv2.resize(img, image_size)
     x_test = np.array([img], dtype=np.uint8)
     print(x_test.shape)
