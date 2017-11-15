@@ -151,8 +151,8 @@ class GenPlate:
         self.fontC = ImageFont.truetype(fontCh, 43, 0)
         self.fontE = ImageFont.truetype(fontEng, 60, 0)
         self.img = np.array(Image.new("RGB", (226, 70), (255, 255, 255)))
-        self.bg = cv2.resize(cv2.imread("./images/template.bmp"), (226, 70))
-        self.smu = cv2.imread("./images/smu2.jpg")
+        self.bg = cv2.resize(cv2.imread("../images/template.bmp"), (226, 70))
+        self.smu = cv2.imread("../images/smu2.jpg")
         self.noplates_path = []
         for parent, parent_folder, filenames in os.walk(NoPlates):
             for filename in filenames:
