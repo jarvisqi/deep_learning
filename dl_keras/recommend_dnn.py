@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from keras import utils,callbacks
 from keras.models import Sequential,Model
-from keras.layers import Input, Dense, LSTM, Embedding,Reshape,Dropout,merge
+from keras.layers import Input, Dense, LSTM,Flatten, Embedding,Reshape,Dropout,merge
 from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam
 import keras as K
@@ -19,20 +19,30 @@ nepochs=64
 
 def load_data():
     user_header = ['user_id', 'age', 'gender', 'occupation']
-    user_set = pd.read_csv('../data/ml-100k/u.user', sep='|', names=user_header, usecols=[0, 1, 2, 3], encoding='utf-8')
+    user_set = pd.read_csv('./data/ml-100k/u.user', sep='|', names=user_header, usecols=[0, 1, 2, 3], encoding='utf-8')
+    
+    user_id = pd.get_dummies(user_set['user_id'], prefix='user_id')
     age = pd.get_dummies(user_set['age'], prefix='age')
     gender = pd.get_dummies(user_set['gender'], prefix='gender')
     occ = pd.get_dummies(user_set['occupation'], prefix='occupation')
     user = pd.concat([gender, age, occ], axis=1)
+    
     print(user.shape)
 
     movie_header = ['movie_id', 'title','release_date', 'video_rel_date']
-    movie_set = pd.read_csv('../data/ml-100k/u.item.txt', sep='|', names=movie_header, usecols=[0, 1, 2, 3], encoding='utf-8')
+    movie_set = pd.read_csv('./data/ml-100k/u.item.txt', sep='|', names=movie_header, usecols=[0, 1, 2, 3], encoding='utf-8')
+    
+    title = pd.get_dummies(movie_set['title'], prefix='title')
+    r_date = pd.get_dummies(movie_set['release_date'], prefix='release_date')
+    v_rel_date = pd.get_dummies(movie_set['video_rel_date'], prefix='video_rel_date')
+    movie = pd.concat([title, r_date, v_rel_date], axis=1)
+
+    print(movie.shape)
 
     rating_header = ['user_id', 'movie_id', 'rating', 'timestamp']
-    rating_set = pd.read_csv('../data/ml-100k/u.data', sep='\t', names=rating_header, encoding='utf-8')
+    rating_set = pd.read_csv('./data/ml-100k/u.data', sep='\t', names=rating_header, encoding='utf-8')
 
-    return user, movie_set,rating_set
+    return user, movie, rating_set
 
 def rebuild_data():
     users, movies, ratings = load_data()
@@ -94,7 +104,7 @@ def train_model():
     r_movies = ratings['movie_id'].values
     print(r_users.shape,r_movies.shape)
 
-    user_set = pd.read_csv('../data/ml-100k/user.csv', sep=',', encoding='utf-8')
+    user_set = pd.read_csv('./data/ml-100k/user.csv', sep=',', encoding='utf-8')
     occupation = [name for name, group in user_set.groupby(['occupation'])]
     occ_index = [occupation.index(i) for i in occupation]
     user_set = user_set.replace(['F', 'M'], [0, 1], inplace=False)
@@ -118,45 +128,133 @@ def train_model():
     y_train = label
 
     model = build_model()
-    plotpath='../models/recommand_rnn_model.png'
+    plotpath='./models/recommand_rnn_model.png'
     if not os.path.exists(plotpath):
         utils.plot_model(model,to_file=plotpath,show_shapes=True)
 
     print("training model")
     callTB = callbacks.TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32, write_graph=True, write_grads=True)
-    best_model = ModelCheckpoint("../models/recommand_rnn_full.h5", monitor='val_loss', verbose=0, save_best_only=True)
+    best_model = ModelCheckpoint("./models/recommand_rnn_full.h5", monitor='val_loss', verbose=0, save_best_only=True)
     print("x_train",x_train[0].shape,x_train[1].shape)
     model.fit(x_train, y_train, batch_size=nbatch_size, epochs=nepochs,verbose=1, callbacks=[callTB,best_model], validation_split=0.15)
 
 
 def test_conc():
-    tweet_a = Input(shape=(2, 3))
-    tweet_b = Input(shape=(2, 3))
-    # This layer can take as input a matrix
-    shared_lstm = LSTM(4)
+    users, movies, ratings = load_data()
 
-    encoded_a = shared_lstm(tweet_a)
-    encoded_b = shared_lstm(tweet_b)
+    input_tensor1 = Input(shape=(k,))
+    print("input_tensor1:", input_tensor1.shape)
+    first_input = Embedding(100000 + 1, k, input_length=1)(input_tensor1)
+    print("first_input:", first_input.shape)
 
-    merged_vector = K.layers.concatenate([encoded_a, encoded_b], axis=-1)
-    predictions = Dense(1, activation='sigmoid')(merged_vector)
+    input_tensor2 = Input(shape=(k,))
+    print("input_tensor2:", input_tensor2.shape)
+    second_input = Embedding(100000 + 1, k, input_length=1)(input_tensor2)
+    print("second_input:", second_input.shape)
 
-    model = Model(inputs=[tweet_a, tweet_b], outputs=predictions)
-    model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    # utils.plot_model(model,to_file='./models/test_conc.png',show_shapes=True)
+    merged_tensor = K.layers.concatenate([first_input, second_input])
+    print("merge:",merged_tensor.shape)
+
+    model = Model(inputs=[input_tensor1], outputs=first_input)
+    model.compile(loss='mae', optimizer='adam', metrics=['accuracy'])
+
+    label = ratings['rating'].values
+    print(label.shape)
+    # label=np.tile(label,(5,1)).T.reshape(-1)
+    ua=np.zeros((1,20788))
+    ub=np.expand_dims(users.values.reshape(-1),axis=0)
+    users=np.column_stack((ua,ub))
+
+    ma=np.zeros((1,93272))
+    mb=np.expand_dims(movies.values.reshape(-1),axis=0)
+    movies=np.column_stack((ma,mb))
+
+    print(users.shape)
+    print(movies.shape)
+
+    x_train = [users, movies]
+    y_train = label
+
+    model.fit(x_train, y_train, batch_size=nbatch_size, epochs=nepochs,verbose=1, validation_split=0.15)
+
+
+def test_rnn():
+
+    rating_header = ['user_id', 'movie_id', 'rating', 'timestamp']
+    ratings = pd.read_csv('./data/ml-100k/u.data', sep='\t', names=rating_header, encoding='utf-8')
+    ratings.head()
+
+    users = ratings.user_id.unique()
+    movies = ratings.movie_id.unique()
+
+    userid2idx = {o: i for i, o in enumerate(users)}
+    movieid2idx = {o: i for i, o in enumerate(movies)}
+    print(len(userid2idx),len(movieid2idx))
+
+    ratings.movieId = ratings.movie_id.apply(lambda x: movieid2idx[x])
+    ratings.userId = ratings.user_id.apply(lambda x: userid2idx[x])
+
+    user_min, user_max, movie_min, movie_max = (ratings.userId.min(), ratings.userId.max(),
+                                                ratings.movieId.min(), ratings.movieId.max())
+
+    n_users = ratings.userId.nunique()
+    n_movies = ratings.movieId.nunique()
+    n_factors = 50
+    np.random.seed = 42
+    print(n_users, n_movies)
+
+    msk = np.random.rand(len(ratings)) < 0.8
+    trn = ratings[msk]
+    val = ratings[~msk]
+
+    g = ratings.groupby('user_id')['rating'].count()
+    topUsers = g.sort_values(ascending=False)[:15]
+    g = ratings.groupby('movie_id')['rating'].count()
+    topMovies = g.sort_values(ascending=False)[:15]
+    top_r = ratings.join(topUsers, rsuffix='_r', how='inner', on='user_id')
+    top_r = top_r.join(topMovies, rsuffix='_r', how='inner', on='movie_id')
+
+    def embedding_input(name, n_in, n_out, reg):
+        inp = Input(shape=(1,), dtype='int64', name=name)
+        return inp, Embedding(n_in, n_out, input_length=1)(inp)
+
+    def create_bias(inp, n_in):
+        x = Embedding(n_in, 1, input_length=1)(inp)
+        return Flatten()(x)
+
+    user_in, u = embedding_input('user_in', n_users, n_factors, 1e-4)
+    movie_in, m = embedding_input('movie_in', n_movies, n_factors, 1e-4)
+
+    ub = create_bias(user_in, n_users)
+    mb = create_bias(movie_in, n_movies)
     
-    data_a=np.random.random_sample(size=(2,3))
-    data_b=np.random.random_sample(size=(2,3))
-    labels=np.random.random_sample(size=(2,3))
+    # x = merge([u, m], mode='dot')
+    x = K.layers.dot([u, m], axes=-1)
+    print(x.shape)
+    x = Flatten()(x)
+    x = K.layers.add([x, ub])
+    x = K.layers.add([x, mb])
+    # x = merge([x, ub], mode='sum')
+    # x = merge([x, mb], mode='sum')
+    print(x.shape)
 
-    print(data_a.shape,data_b.shape)
+    model = Model([user_in, movie_in], x)
+    model.compile(Adam(0.001), loss='mse',metrics=['accuracy'])
+    utils.plot_model(model,to_file='./models/test_rnn_model.png',show_shapes=True)
+    
+    callTB = callbacks.TensorBoard(log_dir='./logs/2')
+    model.fit([trn.user_id, trn.movie_id], trn.rating, batch_size=128, epochs=8,callbacks=[callTB], 
+              validation_data=([val.user_id, val.movie_id], val.rating))
+ 
+    x_test=[np.array([253]), np.array([465])]
+    r=model.predict(x_test)
+    print(r)
 
-    model.fit([data_a, data_b], labels, epochs=10)
 
 
 if __name__ == '__main__':
     
-    test_conc()
+    # test_conc()
 
     # train_model()
 
@@ -164,3 +262,4 @@ if __name__ == '__main__':
 
     # rebuild_data()
     
+    test_rnn()
