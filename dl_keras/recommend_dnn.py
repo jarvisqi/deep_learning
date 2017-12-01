@@ -1,49 +1,69 @@
+# -*- coding: utf-8 -*-
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import numpy as np
 import pandas as pd
-from keras import utils,callbacks
-from keras.models import Sequential,Model
-from keras.layers import Input, Dense, LSTM,Flatten, Embedding,Reshape,Dropout,merge
+from keras import utils, callbacks
+from keras.models import Sequential, Model
+from keras.layers import Input, Dense, Flatten, Embedding, Dropout, Concatenate, Dot
 from keras.callbacks import ModelCheckpoint
-from keras.optimizers import Adam
-import keras as K
-import scipy as spy
-import tensorflow as tf
-import tensorlayer as tl
+from keras.optimizers import Adam, SGD, RMSprop
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
-sess = tf.InteractiveSession()
 
-# 定义 placeholder
-x = tf.placeholder(tf.float32, shape=[None, 784], name='x')
+feature_dim = 30
 
-k = 256
-n_users = 943
-n_movies = 1682
+
+def rebuild_data():
+    """
+    清洗选择特征数据
+    """
+    user_header = ['user_id','gender', 'age',  'job']
+    user_df = pd.read_csv('./data/ml-1m/users.dat', sep='::', names=user_header, usecols=[0, 1, 2, 3], engine = 'python')
+    user_df.set_index(['user_id'], inplace = False) 
+
+    movie_header = ['movie_id', 'title','category']
+    movie_df = pd.read_csv('./data/ml-1m/movies.dat', sep='::', names=movie_header, usecols=[0, 1, 2], engine = 'python')
+    movie_df.set_index(['movie_id'], inplace = False) 
+
+    rating_header = ['user_id', 'movie_id', 'rating', 'timestamp']
+    rating_df = pd.read_csv('./data/ml-1m/ratings.dat',sep='::', names=rating_header, engine = 'python')[:100000]
+
+    rating_user = [user_df[user_df['user_id'] == mid].values[0] for uid, mid, r, _ in rating_df.values]
+    rating_movie = [movie_df[movie_df['movie_id'] == mid].values[0] for uid, mid, r, _ in rating_df.values]
+
+    user_df = pd.DataFrame(rating_user, index=None, columns=['user_id', 'gender', 'age',  'job'])
+    movie_df = pd.DataFrame(rating_movie, index=None, columns=['movie_id', 'title', 'category'])
+    rating_df = rating_df.rating
+    pd.to_pickle(user_df, './data/ml-1m/user_pick')
+    pd.to_pickle(movie_df, './data/ml-1m/movie_pick')
+    pd.to_pickle(rating_df, './data/ml-1m/rating_pick')
+
+    print(user_df.shape,movie_df.shape,rating_df.shape)
 
 
 def load_data():
-    user_header = ['user_id','gender', 'age',  'job']
-    user_set = pd.read_csv('./data/ml-1m/users.dat', sep='::', names=user_header, usecols=[0, 1, 2, 3], encoding='utf-8')
-    
-    # user_id = pd.get_dummies(user_set['user_id'], prefix='user_id')
-    # gender = pd.get_dummies(user_set['gender'], prefix='gender')
-    # age = pd.get_dummies(user_set['age'], prefix='age')
-    # job = pd.get_dummies(user_set['job'], prefix='job')
-    # user = pd.concat([gender, age, job], axis=1)
+    """
+    加载数据
+    """
+    user_df= pd.read_pickle('./data/ml-1m/user_pick')
+    movie_df= pd.read_pickle('./data/ml-1m/movie_pick')
+    rating_df= pd.read_pickle('./data/ml-1m/rating_pick')
 
-    movie_header = ['movie_id', 'title','category']
-    movie_set = pd.read_csv('./data/ml-100k/u.item.txt', sep='::', names=movie_header, usecols=[0, 1, 2], encoding='utf-8')
-    
-    # movie_id = pd.get_dummies(movie_set['movie_id'], prefix='movie_id')
-    # title = pd.get_dummies(movie_set['title'], prefix='title')
-    # category = pd.get_dummies(movie_set['category'], prefix='category')
-    # movie = pd.concat([title, category], axis=1)
+    user_id = pd.get_dummies(user_df['user_id'], prefix='user_id')
+    gender = pd.get_dummies(user_df['gender'], prefix='gender')
+    age = pd.get_dummies(user_df['age'], prefix='age')
+    job = pd.get_dummies(user_df['job'], prefix='job')
+    users_df = pd.concat([gender, age, job], axis=1)
 
-    rating_header = ['user_id', 'movie_id', 'rating', 'timestamp']
-    rating_set = pd.read_csv('./data/ml-100k/u.data', sep='\t', names=rating_header, encoding='utf-8')
+    movie_id = pd.get_dummies(movie_df['movie_id'], prefix='movie_id')
+    title = pd.get_dummies(movie_df['title'], prefix='title')
+    category = pd.get_dummies(movie_df['category'], prefix='category')
+    movies_df = pd.concat([title, category], axis=1)
 
-    return user, movie, rating_set
+    return users_df.values, movies_df.values,rating_df.values
 
 
 def test_dnn():
@@ -77,99 +97,101 @@ def test_dnn():
 
 
 
-def embedding_input(name, n_in, n_out, emb_size):
-    inp = Input(shape=(n_in,), dtype='int64', name=name)
-    emb = Embedding(n_in, n_out, input_length=emb_size)(inp)
-    fc = Dense(emb_size)(emb)
-    return inp, fc
+def build_model(x_train,y_train):
+    """
+    构建网络，训练模型
+    """
+
+    print("build network")
+    usr_input = Input(shape=(feature_dim,))
+    usr_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=feature_dim)(usr_input)
+    print("user_embedding_x:", usr_x.shape)
+    usr_x = Flatten()(usr_x)
+    usr_x = Dense(512, activation='linear')(usr_x)
+    print("user_dense_x:", usr_x.shape)
+
+    mov_input = Input(shape=(feature_dim,))
+    mov_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=feature_dim)(mov_input)
+    print("movie_embedding_x:", mov_x.shape)
+    mov_x = Flatten()(mov_x)
+    mov_x = Dense(512, activation='linear')(mov_x)
+    print("movie_dense_x:", mov_x.shape)
+
+    concat_tensor = Concatenate()([usr_x, mov_x])
+    print("concat_tensor:", concat_tensor.shape)
+    x_tensor = Dense(1024, activation='relu')(concat_tensor)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dense(512, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dense(128, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dense(32, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dense(8, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_output = Dense(1, activation='linear')(x_tensor)
+
+    print("Model:", usr_input.shape, mov_input.shape, "output_x:", x_output.shape)
+    model = Model([usr_input, mov_input], x_output)
+    sgd = Adam(lr=0.001)
+    model.compile(optimizer=sgd, loss='mse', metrics=['accuracy'])
+    model_png='./models/licenseplate_model.png'
+    # 显示网络结构 
+    if not os.path.exists(model_png):
+        utils.plot_model(model,to_file='./models/licenseplate_model.png')
+
+    callTB = callbacks.TensorBoard(log_dir='./logs/dnn_merge-5')
+    print("training model")
+    best_model = callbacks.ModelCheckpoint("./models/dnn_recommend_full.h5", monitor='val_loss', verbose=0, save_best_only=True)
+    model.fit(x_train, y_train, epochs=32, batch_size=512,callbacks=[callTB, best_model], validation_split=0.2)
 
 
-def get_usr_combined_features():
-    n_factors = 32
-    user_header = ['user_id','gender', 'age',  'job']
-    user_set = pd.read_csv('./data/ml-1m/users.dat', sep='::', names=user_header, usecols=[0, 1, 2, 3], engine = 'python')
-    user_id = pd.get_dummies(user_set['user_id'], prefix='user_id')
-    gender = pd.get_dummies(user_set['gender'], prefix='gender')
-    age = pd.get_dummies(user_set['age'], prefix='age')
-    job = pd.get_dummies(user_set['job'], prefix='job')
-    users = pd.concat([user_id,gender, age, job], axis=1)
-    print(users.shape)
 
-    # max_uid = np.max(user_set.user_id.values) + 1
-    # max_gender = np.max(gender.values) + 1
-    # max_age = np.max(user_set.age.values) + 1
-    # max_job = np.max(user_set.job.values) + 1
-    # input_uid, uid_fc = embedding_input('user_id', max_uid, n_factors,256)    
-    # input_gender, gender_fc = embedding_input('gender_id', max_gender, n_factors,256)    
-    # input_age, age_fc = embedding_input('age_id', max_age, n_factors,256)    
-    # input_job, job_fc = embedding_input('job_id', max_job, n_factors,256) 
+def build_SqModel(x_train,y_train):
+    
+    model = Sequential()
+    model.add(Embedding(100000 + 1, 128, input_length=20))
+    model.add(Flatten())
+    model.add(Dense(512, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(8, activation='relu'))
+    model.add(Dense(1, activation='linear'))
 
-    inp_user, user_fc = embedding_input('user', 6070, n_factors,256)    
-    print("构建user网络......")
-    # inp_usr = K.layers.concatenate([input_uid, input_gender, input_age, input_job],axis=-1)
-    # ux = K.layers.concatenate([uid_fc, gender_fc, age_fc, job_fc], axis=-1)
-    ux = Flatten()(user_fc)
-    ux = Dropout(0.2)(ux)
-    user_x = Dense(200, activation='tanh')(ux)
-    usr_model = Model(inp_user,user_x)
+    model.compile(optimizer=Adam(lr=0.001),loss='binary_crossentropy' ,metrics=['accuracy'])
+    callTB = K.callbacks.TensorBoard(log_dir='./logs/dnn_merge-1')
+    model.fit(x_train, y_train, epochs=16, batch_size=32,callbacks=[callTB],validation_split=0.2)
 
-    return users, inp_user,usr_model
-
-
-def get_mov_combined_features():
-    n_factors = 32
-    movie_header = ['movie_id', 'title','category']
-    movie_set = pd.read_csv('./data/ml-1m/movies.dat', sep='::', names=movie_header, usecols=[0, 1, 2], engine = 'python')
-    movie_id = pd.get_dummies(movie_set['movie_id'], prefix='movie_id')
-    title = pd.get_dummies(movie_set['title'], prefix='title')
-    category = pd.get_dummies(movie_set['category'], prefix='category')
-    movies = pd.concat([movie_id,title, category], axis=1)
-    print(movies.shape)
-    # max_mid = np.max(movie_set.movie_id.values) + 1
-    # max_title = len(title.values)+1
-    # max_category = len(category.values)+1
-    # print(max_mid,max_title,max_category)
-    # input_mid, mid_fc = embedding_input('movie_id', max_mid, n_factors,256)    
-    # input_title, title_fc = embedding_input('title_id', max_title, n_factors,256)    
-    # input_category, category_fc = embedding_input('category_id', max_category, n_factors,256)  
-
-    inp_mov, user_fc = embedding_input('movie', 8067, n_factors,256)      
-
-    print("构建movie网络......")
-    # print(inp_mov)
-    # mx = K.layers.concatenate([mid_fc, title_fc, category_fc], axis=-1)
-    mx = Flatten()(user_fc)
-    mx = Dropout(0.2)(mx)
-    movie_x = Dense(200, activation='tanh')(mx)
-    mov_model = Model(inp_mov,movie_x)
-
-    return movies,inp_mov,mov_model
 
 def main():
-    r_header = ['user_id', 'movie_id', 'rating']
-    rating_set = pd.read_csv('./data/ml-1m/ratings.dat',sep='::', names=r_header, engine='python')
+    print("load data")
+    users, movies, ratings = load_data()
+    print("origin dim", users.shape, movies.shape)
 
-    users, inp_usr, usr_model = get_usr_combined_features()
-    movies, inp_mov, mov_model = get_mov_combined_features()
-    # #训练数据集
-    x_train = [users, movies]
-    y = rating_set.rating.values
+    print("PCA")
+    usr_pca = PCA(n_components=feature_dim).fit_transform(users)
+    mov_pca = PCA(n_components=feature_dim).fit_transform(movies)
+    print("user_pca dim:", usr_pca.shape, "movie_pca dim:", mov_pca.shape)
 
-    input_x =K.layers.concatenate(inputs=[usr_model, mov_model],axis=-1)
-    model = Model([inp_usr, inp_mov],input_x)
-    model.compile(Adam(0.001), loss='mse',metrics=['accuracy'])
-    utils.plot_model(model,to_file='./models/recomm_dnn_model.png',show_shapes=True)
-    
-    print("开始训练......")
-    callTB = callbacks.TensorBoard(log_dir='./logs/dnn-1')
-    model.fit(x_train, y, batch_size=128, epochs=16, callbacks=[callTB], validation_split=0.2)
+    x_train = [usr_pca, mov_pca]
+    y_train = ratings
+
+    build_model(x_train, y_train)
+
+    #  x_train = usr_pca
+    #  build_SqModel(x_train,y_train)
 
 
 if __name__ == '__main__':
-    
-    # get_usr_combined_features()
-
-    # get_mov_combined_features()
 
     main()
+
+    # load_data()     # (100000, 30) (100000, 3763) (100000,)
+
+    # rebuild_data()
+
+
+ 
+
 
