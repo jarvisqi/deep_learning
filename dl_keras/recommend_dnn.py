@@ -5,16 +5,20 @@ import numpy as np
 import pandas as pd
 from keras import utils, callbacks
 from keras.models import Sequential, Model
-from keras.layers import Input, Dense, Flatten, Embedding, Dropout, Concatenate, Dot
+from keras.layers import Input, Dense, Flatten, Embedding, Dropout, Concatenate, Dot,Reshape,Merge
 from keras.callbacks import ModelCheckpoint
-from keras.optimizers import Adam, SGD, RMSprop
+from keras.optimizers import Adam, SGD, RMSprop,Adamax
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-
+import math
+from sklearn import preprocessing 
+from sklearn.ensemble import ExtraTreesClassifier,ExtraTreesRegressor,RandomForestClassifier,RandomForestRegressor
+from sklearn.feature_selection import SelectFromModel
+from sklearn.linear_model import Lasso 
 
 feature_dim = 30
-
+nbatch_size = 512
 
 def rebuild_data():
     """
@@ -67,6 +71,9 @@ def load_data():
 
 
 def test_dnn():
+    k=128
+    rating_header = ['user_id', 'movie_id', 'rating', 'timestamp']
+    ratings = pd.read_csv('./data/ml-1m/ratings.dat',sep='::', names=rating_header, engine = 'python')[:300000]
     #获取最大ID
     n_users = np.max(ratings['user_id'])
     n_movies = np.max(ratings['movie_id'])
@@ -80,21 +87,32 @@ def test_dnn():
     y_train = ratings['rating'].values
 
     #先构建2个小的神经网络
-    input_1 = Input(shape=(1,),name='main_input_1')
-    input_1_emb = Embedding(n_users + 1, k, input_length = 1)(input_1)
-    model_1 = Reshape((k,))(input_1_emb)
+    model1 = Sequential()
+    model1.add(Embedding(n_users + 1, k, input_length = 1))
+    model1.add(Reshape((k,)))
 
-    input_2 = Input(shape=(1,),name='main_input_2')
-    input_2_emb = Embedding(n_movies + 1, k, input_length = 1)(input_2)
-    model_2 = Reshape((k,))(input_2_emb)
-    #合并两个神经网络
-    input_x = dot(inputs=[model_1, model_2],axes=1)
+    model2 = Sequential()
+    model2.add(Embedding(n_movies + 1, k, input_length = 1))
+    model2.add(Reshape((k,)))
 
-    model = Model(inputs = [input_1,input_2], outputs = input_x)
-    model.compile(loss='mse', optimizer='adam')
-    #这是我之前训练好的权重
-    model.load_weights("movie.h5")
+    model = Sequential()
+    model.add(Merge([model1, model2], mode = 'concat'))
+    model.add(Dropout(0.2))
+    model.add(Dense(k, activation = 'relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(int(k/4), activation = 'relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(int(k/16), activation = 'relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(1, activation = 'linear'))
+    model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+    model.fit(X_train, y_train, epochs=64, batch_size=512,validation_split=0.2)
 
+    sumt = 0
+    for i in range(ratings.shape[0]):
+        sumt += (ratings['rating'][i] - model.predict([np.array([ratings['user_id'][i]]), np.array([ratings['movie_id'][i]])])) ** 2
+    mse = math.sqrt(sumt/ratings.shape[0])
+    print(mse)
 
 
 def build_model(x_train,y_train):
@@ -104,47 +122,39 @@ def build_model(x_train,y_train):
 
     print("build network")
     usr_input = Input(shape=(feature_dim,))
-    usr_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=feature_dim)(usr_input)
+    usr_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=30)(usr_input)
     print("user_embedding_x:", usr_x.shape)
     usr_x = Flatten()(usr_x)
-    usr_x = Dense(512, activation='linear')(usr_x)
+    usr_x = Dense(128, activation='relu')(usr_x)
     print("user_dense_x:", usr_x.shape)
 
     mov_input = Input(shape=(feature_dim,))
-    mov_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=feature_dim)(mov_input)
+    mov_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=30)(mov_input)
     print("movie_embedding_x:", mov_x.shape)
     mov_x = Flatten()(mov_x)
-    mov_x = Dense(512, activation='linear')(mov_x)
+    mov_x = Dense(128, activation='relu')(mov_x)
     print("movie_dense_x:", mov_x.shape)
 
     concat_tensor = Concatenate()([usr_x, mov_x])
     print("concat_tensor:", concat_tensor.shape)
-    x_tensor = Dense(1024, activation='relu')(concat_tensor)
-    x_tensor = Dropout(0.5)(x_tensor)
-    x_tensor = Dense(512, activation='relu')(x_tensor)
-    x_tensor = Dropout(0.5)(x_tensor)
-    x_tensor = Dense(128, activation='relu')(x_tensor)
+    x_tensor = Dense(64, activation='relu')(x_tensor)
     x_tensor = Dropout(0.5)(x_tensor)
     x_tensor = Dense(32, activation='relu')(x_tensor)
-    x_tensor = Dropout(0.5)(x_tensor)
-    x_tensor = Dense(8, activation='relu')(x_tensor)
-    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dropout(0.3)(x_tensor)
     x_output = Dense(1, activation='linear')(x_tensor)
 
     print("Model:", usr_input.shape, mov_input.shape, "output_x:", x_output.shape)
     model = Model([usr_input, mov_input], x_output)
-    sgd = Adam(lr=0.001)
+    sgd = Adam(lr=0.002)
     model.compile(optimizer=sgd, loss='mse', metrics=['accuracy'])
-    model_png='./models/licenseplate_model.png'
+    model_png='./models/dnn_recomm_model.png'
     # 显示网络结构 
     if not os.path.exists(model_png):
-        utils.plot_model(model,to_file='./models/licenseplate_model.png')
-
-    callTB = callbacks.TensorBoard(log_dir='./logs/dnn_merge-5')
+        utils.plot_model(model,to_file='./models/dnn_recomm_model.png')
+    callTB = callbacks.TensorBoard(log_dir='./logs/dnn_merge-2')
     print("training model")
     best_model = callbacks.ModelCheckpoint("./models/dnn_recommend_full.h5", monitor='val_loss', verbose=0, save_best_only=True)
-    model.fit(x_train, y_train, epochs=32, batch_size=512,callbacks=[callTB, best_model], validation_split=0.2)
-
+    model.fit(x_train, y_train, epochs=64, batch_size=512,callbacks=[callTB, best_model], validation_split=0.2)
 
 
 def build_SqModel(x_train,y_train):
@@ -162,6 +172,36 @@ def build_SqModel(x_train,y_train):
     model.compile(optimizer=Adam(lr=0.001),loss='binary_crossentropy' ,metrics=['accuracy'])
     callTB = K.callbacks.TensorBoard(log_dir='./logs/dnn_merge-1')
     model.fit(x_train, y_train, epochs=16, batch_size=32,callbacks=[callTB],validation_split=0.2)
+
+
+
+def sign_model():
+    users, movies, ratings = load_data()
+    x_train = np.concatenate([users, movies], axis=1)
+    y_train = ratings
+
+    # 特征选择  用来计算特征的重要程度，因此能用来去除不相关的特征
+    clf = RandomForestClassifier()
+    clf = clf.fit(x_train, ratings)
+    ft_model = SelectFromModel(clf, prefit=True)
+    x_train = ft_model.transform(x_train)
+    print(x_train.shape, y_train.shape)
+    dim=x_train.shape[1]
+
+    x_input = Input(shape=(dim,))
+    x_tensor = Dense(128, activation='relu')(x_input)
+    x_tensor = Dropout(0.5)(x_tensor)
+    x_tensor = Dense(32, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.3)(x_tensor)
+    x_tensor = Dense(8, activation='relu')(x_tensor)
+    x_tensor = Dropout(0.3)(x_tensor)
+    x_output = Dense(1, activation='linear')(x_tensor)
+
+    model = Model(x_input, x_output)
+    sgd = Adam(lr=0.001)
+    model.compile(optimizer=sgd, loss='mse', metrics=['accuracy'])
+    model.fit(x_train, y_train, epochs=64, batch_size=nbatch_size,callbacks=None, validation_split=0.2)
+    model.save("./models/dnn_sign_model.h5")
 
 
 def main():
@@ -185,13 +225,13 @@ def main():
 
 if __name__ == '__main__':
 
-    main()
+    # test_dnn()
+
+    # main()
 
     # load_data()     # (100000, 30) (100000, 3763) (100000,)
 
     # rebuild_data()
 
-
- 
-
+    sign_model()
 
