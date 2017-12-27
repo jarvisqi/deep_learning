@@ -1,14 +1,17 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "0.1.0",
-    "command": "python",
-    "isShellCommand": true,
-    "args": ["${file}"],
-    "showOutput": "always",
-     "options": {
-     "env":{
-        "PYTHONIOENCODING": "UTF-8"
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "run python",
+          "command": "python ${file}",
+          "type": "shell",
+          "problemMatcher": [],
+          "group": {
+              "kind": "build",
+              "isDefault": true
+          }
       }
-  }
+  ]
 }

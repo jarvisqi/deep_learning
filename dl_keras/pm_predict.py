@@ -23,14 +23,12 @@ def parse(x):
 
 
 def load_data():
-    data_set = pd.read_csv('./data/text/raw.csv', parse_dates=[
-                           ['year', 'month', 'day', 'hour']], index_col=0, date_parser=parse)
+    data_set = pd.read_csv('./data/text/raw.csv', parse_dates=[['year', 'month', 'day', 'hour']], index_col=0, date_parser=parse)
     # 删除一列
     data_set.drop('No', axis=1, inplace=True)
 
     # 指定列名
-    data_set.columns = ['pollution', 'dew', 'temp',
-                        'press', 'wnd_dir', 'wnd_spd', 'snow', 'rain']
+    data_set.columns = ['pollution', 'dew', 'temp','press', 'wnd_dir', 'wnd_spd', 'snow', 'rain']
     data_set.index.__name__ = 'date'
 
     # 用0填充的NA值

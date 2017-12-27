@@ -10,6 +10,7 @@ from keras.callbacks import ModelCheckpoint
 from keras.optimizers import Adam, SGD, RMSprop,Adamax
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
 import matplotlib.pyplot as plt
 import math
 from sklearn import preprocessing 
@@ -17,7 +18,6 @@ from sklearn.ensemble import ExtraTreesClassifier,ExtraTreesRegressor,RandomFore
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import Lasso 
 
-feature_dim = 30
 nbatch_size = 512
 
 def rebuild_data():
@@ -56,18 +56,21 @@ def load_data():
     movie_df= pd.read_pickle('./data/ml-1m/movie_pick')
     rating_df= pd.read_pickle('./data/ml-1m/rating_pick')
 
-    user_id = pd.get_dummies(user_df['user_id'], prefix='user_id')
-    gender = pd.get_dummies(user_df['gender'], prefix='gender')
-    age = pd.get_dummies(user_df['age'], prefix='age')
-    job = pd.get_dummies(user_df['job'], prefix='job')
-    users_df = pd.concat([gender, age, job], axis=1)
+    user_df= pd.read_pickle('./data/ml-1m/user_pick')
+    for f in user_df.columns:
+        if user_df[f].dtype == 'object':
+            lbl = preprocessing.LabelEncoder()
+            lbl.fit(list(user_df[f].values))
+            user_df[f] = lbl.transform(list(user_df[f].values))
 
-    movie_id = pd.get_dummies(movie_df['movie_id'], prefix='movie_id')
-    title = pd.get_dummies(movie_df['title'], prefix='title')
-    category = pd.get_dummies(movie_df['category'], prefix='category')
-    movies_df = pd.concat([title, category], axis=1)
-
-    return users_df.values, movies_df.values,rating_df.values
+    movie_df= pd.read_pickle('./data/ml-1m/movie_pick')
+    for f in movie_df.columns:
+        if movie_df[f].dtype == 'object':
+            lbl = preprocessing.LabelEncoder()
+            lbl.fit(list(movie_df[f].values))
+            movie_df[f] = lbl.transform(list(movie_df[f].values))
+    
+    return user_df.values, movie_df.values,rating_df.values
 
 
 def test_dnn():
@@ -121,15 +124,15 @@ def build_model(x_train,y_train):
     """
 
     print("build network")
-    usr_input = Input(shape=(feature_dim,))
-    usr_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=30)(usr_input)
+    usr_input = Input(shape=(3,))
+    usr_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=3)(usr_input)
     print("user_embedding_x:", usr_x.shape)
     usr_x = Flatten()(usr_x)
     usr_x = Dense(128, activation='relu')(usr_x)
     print("user_dense_x:", usr_x.shape)
 
-    mov_input = Input(shape=(feature_dim,))
-    mov_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=30)(mov_input)
+    mov_input = Input(shape=(3,))
+    mov_x = Embedding(x_train[0].shape[0] + 1, 256, input_length=3)(mov_input)
     print("movie_embedding_x:", mov_x.shape)
     mov_x = Flatten()(mov_x)
     mov_x = Dense(128, activation='relu')(mov_x)
@@ -137,7 +140,7 @@ def build_model(x_train,y_train):
 
     concat_tensor = Concatenate()([usr_x, mov_x])
     print("concat_tensor:", concat_tensor.shape)
-    x_tensor = Dense(64, activation='relu')(x_tensor)
+    x_tensor = Dense(64, activation='relu')(concat_tensor)
     x_tensor = Dropout(0.5)(x_tensor)
     x_tensor = Dense(32, activation='relu')(x_tensor)
     x_tensor = Dropout(0.3)(x_tensor)
@@ -151,7 +154,7 @@ def build_model(x_train,y_train):
     # 显示网络结构 
     if not os.path.exists(model_png):
         utils.plot_model(model,to_file='./models/dnn_recomm_model.png')
-    callTB = callbacks.TensorBoard(log_dir='./logs/dnn_merge-2')
+    callTB = callbacks.TensorBoard(log_dir='./logs/dnn_merge-1')
     print("training model")
     best_model = callbacks.ModelCheckpoint("./models/dnn_recommend_full.h5", monitor='val_loss', verbose=0, save_best_only=True)
     model.fit(x_train, y_train, epochs=64, batch_size=512,callbacks=[callTB, best_model], validation_split=0.2)
@@ -180,7 +183,7 @@ def sign_model():
     x_train = np.concatenate([users, movies], axis=1)
     y_train = ratings
 
-    # 特征选择  用来计算特征的重要程度，因此能用来去除不相关的特征
+    # 特征选择  用来计算特征的重要程度，去除不相关的特征
     clf = RandomForestClassifier()
     clf = clf.fit(x_train, ratings)
     ft_model = SelectFromModel(clf, prefit=True)
@@ -207,11 +210,10 @@ def sign_model():
 def main():
     print("load data")
     users, movies, ratings = load_data()
-    print("origin dim", users.shape, movies.shape)
-
+    print("data dim", users.shape, movies.shape,ratings.shape)
     print("PCA")
-    usr_pca = PCA(n_components=feature_dim).fit_transform(users)
-    mov_pca = PCA(n_components=feature_dim).fit_transform(movies)
+    usr_pca = PCA(n_components=3).fit_transform(users)
+    mov_pca = PCA(n_components=3).fit_transform(movies)
     print("user_pca dim:", usr_pca.shape, "movie_pca dim:", mov_pca.shape)
 
     x_train = [usr_pca, mov_pca]
@@ -227,11 +229,13 @@ if __name__ == '__main__':
 
     # test_dnn()
 
-    # main()
+    main()
 
     # load_data()     # (100000, 30) (100000, 3763) (100000,)
 
     # rebuild_data()
 
-    sign_model()
+    # sign_model()
+
+
 
