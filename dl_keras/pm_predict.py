@@ -5,17 +5,16 @@ import numpy as np
 from datetime import datetime
 from matplotlib import pyplot
 from sklearn.preprocessing import MinMaxScaler,LabelEncoder
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error,mean_absolute_error
 from sklearn.model_selection import train_test_split
 from keras.models import Sequential
 from keras.layers import Dense,LSTM
 
 
-n_epochs=32
-n_batch_size=64
+n_epochs=64
+n_batch_size=128
 n_hours=3
 n_features = 8
-
 
 
 def parse(x):
@@ -96,13 +95,14 @@ def build_model(x,y):
     model=Sequential()
     model.add(LSTM(64,input_shape=(x,y)))
     model.add(Dense(1))
-    model.compile(optimizer='adam',loss='mae',metrics=['accuracy'])
+    model.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
 
     return model
 
 def train_model():
 
     train_x, test_x, train_y, test_y, scaler = load_pollution()
+    
     model = build_model(train_x.shape[1], train_x.shape[2])
     history = model.fit(train_x, train_y, epochs=n_epochs, batch_size=n_batch_size,
                         verbose=1, validation_data=(test_x, test_y), shuffle=False)
@@ -119,13 +119,18 @@ def train_model():
     inv_yhat = np.concatenate((yhat, test_x[:, -7:]), axis=1)
     inv_yhat = scaler.inverse_transform(inv_yhat)
     inv_yhat = inv_yhat[:, 0]
+    
     test_y = test_y.reshape((len(test_y), 1))
     inv_y = np.concatenate((test_y, test_x[:, -7:]), axis=1)
     inv_y = scaler.inverse_transform(inv_y)
     inv_y = inv_y[:, 0]
-
-    rmse = np.sqrt(mean_squared_error(inv_y, inv_yhat))
-    print('Test RMSE: %.3f' % rmse)
+    print(inv_yhat)
+    print(inv_y)
+    
+    rmse =np.sqrt(mean_squared_error(inv_y, inv_yhat))
+    mae = mean_absolute_error(inv_y, inv_yhat)
+    print('Test RMSE: {0}'.format(rmse))
+    print('Test MAE: {0}'.format(mae))
 
 
 def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
@@ -146,15 +151,12 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         else:
             names += [('var%d(t+%d)' % (j + 1, i)) for j in range(n_vars)]
 
-    # print(cols)
     agg = pd.concat(cols, axis=1)   # 连接2序列，按行的方向
     agg.columns = names
     if dropnan:
     	agg.dropna(inplace=True)
 
-    # print(agg)
     return agg
-
 
 
 if __name__ == '__main__':

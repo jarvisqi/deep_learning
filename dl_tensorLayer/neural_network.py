@@ -36,7 +36,7 @@ class NeurNetWork(object):
 
     def __init__(self, layers, activation="logistic"):
         """
-        :param layers: 层数，如[4, 3, 2] 表示两层len(list)-1,(因为第一层是输入层，，有4个单元)，
+        :param layers: 层数，如[4, 3, 2] 表示两层len(list)-1,(输入层，有4个单元)，
         第一层有3个单元，第二层有2个单元
         :param activation:
         """
@@ -73,7 +73,8 @@ class NeurNetWork(object):
             deltas = [errors * self.activation_deriv(a[-1]), ]   # 输出层的误差
             # 反向传播，对于隐藏层的误差
             for j in range(len(a) - 2, 0, -1):
-                tmp = np.dot(deltas[-1], self.weights[j].T) * self.activation_deriv(a[j])
+                tmp = np.dot(deltas[-1], self.weights[j].T) * \
+                    self.activation_deriv(a[j])
                 deltas.append(tmp)
             deltas.reverse()
 
@@ -82,11 +83,10 @@ class NeurNetWork(object):
                 layer = np.atleast_2d(a[j])
                 delta = np.atleast_2d(deltas[j])
                 self.weights[j] += learn_rate * np.dot(layer.T, delta)
-            
+
             # 更新偏向
             for j in range(len(self.bias)):
                 self.bias[j] += learn_rate * deltas[j]
-    
 
     def predict(self, row):
         """
@@ -125,7 +125,6 @@ def train():
     # 打印对比结果
     print(confusion_matrix(y_test, predictions))
     print(classification_report(y_test, predictions))
-
 
 
 if __name__ == '__main__':
