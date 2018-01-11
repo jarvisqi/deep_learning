@@ -10,8 +10,10 @@ from keras.layers import Dense, Dropout,Embedding,GRU,LSTM,BatchNormalization
 from keras.optimizers import Adam
 from keras.utils import np_utils, plot_model
 
+
 nbatch_size = 512
-nepochs = 100
+nepochs = 64
+seq_len = 2
 
 def main():
     print('load data')
@@ -31,7 +33,7 @@ def main():
     index_dict = {}
     for k in word_index_dict:
         index_dict.update({word_index_dict[k]: k})
-    seq_len = 2
+
     dataX = []
     dataY = []
     print("build data")
@@ -48,10 +50,10 @@ def main():
     
     print("build network")
     model = Sequential()
-    model.add(Embedding(len(word_dataframe) + 1, 256))
-    model.add(GRU(256, activation="relu"))
+    model.add(Embedding(len(word_dataframe) + 1, 128))
+    model.add(GRU(128, activation="relu"))
     model.add(BatchNormalization())
-    model.add(Dense(1024,activation='relu'))
+    model.add(Dense(256,activation='relu'))
     model.add(BatchNormalization())
     model.add(Dense(y.shape[1],activation='softmax'))
 
@@ -64,7 +66,11 @@ def main():
 def gen_poem(seed_text):
     
     model = load_model('./models/gen_poetry_full.h5')
-    word_index_dict = pd.read_pickle(word_index_dict, './data/text/word_index_dict')
+    word_index_dict = pd.read_pickle('./data/text/word_index_dict')
+    index_dict = {}
+    for k in word_index_dict:
+        index_dict.update({word_index_dict[k]: k})
+
     rows = 4
     cols = 6
     chars = re.findall('[\x80-\xff]{3}|[\w\W]', seed_text)
@@ -80,17 +86,19 @@ def gen_poem(seed_text):
         else:
             proba = model.predict(np.array(arr[-seq_len:]), verbose=0)
             predicted = np.argsort(proba[1])[-5:]
-            index = random.randint(0,len(predicted)-1)
+            index = np.random.randint(0,len(predicted)-1)
             new_char = predicted[index]
             while new_char == 1 or new_char == 2:
-                index = random.randint(0,len(predicted)-1)
+                index = np.random.randint(0,len(predicted)-1)
                 new_char = predicted[index]
             arr.append(new_char)
     poem = [index_dict[i] for i in arr]
-    return "".join(poem)
-
+    print("".join(poem))
 
 
 if __name__ == '__main__':
     
-    main()
+    gen_poem("杨柳")
+
+    
+    # main()

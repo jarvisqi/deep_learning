@@ -11,7 +11,7 @@ from keras.models import Sequential
 from keras.layers import Dense,LSTM
 
 
-n_epochs=64
+n_epochs=32
 n_batch_size=128
 n_hours=3
 n_features = 8
@@ -59,7 +59,7 @@ def show_pyplot():
 def load_pollution():
     data_set = pd.read_csv('./data/text/pollution.csv', header=0, index_col=0)
     values = data_set.values
-
+    print(values)
     encoder = LabelEncoder()
     values[:, 4] = encoder.fit_transform(values[:, 4])
     values=values.astype('float32')
@@ -91,18 +91,17 @@ def load_pollution():
 
 
 def build_model(x,y):
-    
+    print(x)
     model=Sequential()
     model.add(LSTM(64,input_shape=(x,y)))
     model.add(Dense(1))
-    model.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
+    model.compile(optimizer='adam',loss='mae',metrics=['accuracy'])
 
     return model
 
 def train_model():
 
     train_x, test_x, train_y, test_y, scaler = load_pollution()
-    
     model = build_model(train_x.shape[1], train_x.shape[2])
     history = model.fit(train_x, train_y, epochs=n_epochs, batch_size=n_batch_size,
                         verbose=1, validation_data=(test_x, test_y), shuffle=False)
@@ -115,8 +114,11 @@ def train_model():
     # predict
     yhat = model.predict(test_x)
     test_x = test_x.reshape((test_x.shape[0], n_hours * n_features))
+    print("yhat",yhat.shape,"test_x",test_x.shape)
+    print(test_x[:, -7:].shape)
     # print(yhat.shape,test_x[:, -7:].shape)
     inv_yhat = np.concatenate((yhat, test_x[:, -7:]), axis=1)
+    print("inv_yhat",inv_yhat.shape)
     inv_yhat = scaler.inverse_transform(inv_yhat)
     inv_yhat = inv_yhat[:, 0]
     
@@ -163,3 +165,4 @@ if __name__ == '__main__':
     
     train_model()
 
+    # load_pollution()
