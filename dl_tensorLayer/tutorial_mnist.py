@@ -16,7 +16,7 @@ def main():
     # 准备数据
     X_train, y_train, X_val, y_val, X_test, y_test = tl.files.load_mnist_dataset(
         shape=(-1, 784))
-
+    print(X_train.shape)
     network = build_net(x)
     # 定义损失函数和衡量指标
     # tl.cost.cross_entropy 在内部使用 tf.nn.sparse_softmax_cross_entropy_with_logits() 实现 softmax
@@ -35,8 +35,8 @@ def main():
     tl.layers.initialize_global_variables(sess)
 
     # 列出模型信息
-    # network.print_params()
-    # network.print_layers()
+    network.print_params()
+    network.print_layers()
 
     # 训练模型
     tl.utils.fit(sess, network, train_op, cost, X_train, y_train, x, y_,
@@ -57,7 +57,7 @@ def build_net(x):
     定义网络结构
     """
     # 定义模型
-    print("build networdk")
+    print("build network")
     network = tl.layers.InputLayer(x, name='input_layer')
     network = tl.layers.DropoutLayer(network, keep=0.8, name='drop1')
     network = tl.layers.DenseLayer(network, n_units=800, act=tf.nn.relu, name='relu1')
@@ -95,6 +95,6 @@ def predict_mnist():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
 
-    predict_mnist()
+    # predict_mnist()
