@@ -9,8 +9,9 @@ from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
 
 
-np.random.seed(19260816)
-img_h, img_w, img_c = 64, 64, 3
+np.random.seed(1024)
+# np.random.seed(19260816)
+img_h, img_w, img_c = 120, 120, 3
 n_classes = 2
 
 # 定义  placeholder 占位符
@@ -38,6 +39,9 @@ def load_data():
     data = np.array(images)
     labels = np.array(labels)
 
+    if os.path.exists("./data/cd_data.npy"):
+        os.remove("./data/cd_data.npy")
+        os.remove("./data/cd_label.npy")
     np.save("./data/cd_data.npy", data)
     np.save("./data/cd_label.npy", labels)
 
@@ -50,24 +54,26 @@ def build_net(x):
     """
     print("build network")
     network = tl.layers.InputLayer(x, name='input_layer')
-    network = tl.layers.Conv2d(network, n_filter=64, filter_size=(5, 5), act=tf.nn.relu, name='conv2d1')
+    network = tl.layers.Conv2d(network, n_filter=32, filter_size=(5, 5), act=tf.nn.relu, name='conv2d1')
     network = tl.layers.MaxPool2d(network, name='maxpool1')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout1')
 
-    network = tl.layers.Conv2d(network, n_filter=128, filter_size=(5, 5), act=tf.nn.relu, name='conv2d2')
+    network = tl.layers.Conv2d(network, n_filter=64, filter_size=(5, 5), act=tf.nn.relu, name='conv2d2')
     network = tl.layers.MaxPool2d(network, name='maxpool2')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout2')
 
-    network = tl.layers.Conv2d(network, n_filter=256, filter_size=(5, 5), act=tf.nn.relu, name='conv2d3')
+    network = tl.layers.Conv2d(network, n_filter=128, filter_size=(5, 5), act=tf.nn.relu, name='conv2d3')
     network = tl.layers.MaxPool2d(network, name='maxpool3')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout3')
 
-    network = tl.layers.Conv2d(network, n_filter=512, filter_size=(5, 5), act=tf.nn.relu, name='conv2d4')
+    network = tl.layers.Conv2d(network, n_filter=256, filter_size=(5, 5), act=tf.nn.relu, name='conv2d4')
     network = tl.layers.MaxPool2d(network, name='maxpool4')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout4')
 
     network = tl.layers.FlattenLayer(network, name='flatten_layer')
     network = tl.layers.DenseLayer(network, n_units=512, act=tf.nn.relu, name='dense_layer1')
+    network = tl.layers.DenseLayer(network, n_units=256, act=tf.nn.relu, name='dense_layer2')
+    network = tl.layers.DenseLayer(network, n_units=128, act=tf.nn.relu, name='dense_layer3')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout5')
 
     network = tl.layers.DenseLayer(network, n_units=n_classes, act=tf.identity, name='output')
@@ -97,7 +103,7 @@ def train():
     images = np.load("./data/cd_data.npy")
     lables = np.load("./data/cd_label.npy")
     images /= 255
-    X_train, X_test, y_train, y_test = train_test_split(images, lables, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(images, lables, test_size=0.15)
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
     network = build_net(x)
@@ -105,7 +111,7 @@ def train():
 
     # 定义优化器
     train_params = network.all_params
-    train_op = tf.train.AdamOptimizer(learning_rate=0.001).minimize(cost, var_list=train_params)
+    train_op = tf.train.AdamOptimizer(learning_rate=0.0003).minimize(cost, var_list=train_params)
 
     tf.summary.scalar('acc', acc)
     # tf.summary.scalar('cost', cost)
@@ -123,7 +129,7 @@ def train():
     print("test......")
     # 评估模型
     tl.utils.test(sess, network, acc, X_test, y_test, x, y_, batch_size=256)
-    tl.files.save_npz(network.all_params, name='./models/tl_catdog_model.npz')
+    tl.files.save_ckpt(sess=sess,mode_name='tl_catdog_model.ckpt',save_dir='./models/checkpoint')
 
     sess.close()
 
