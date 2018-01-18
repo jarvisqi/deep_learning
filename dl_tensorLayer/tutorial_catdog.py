@@ -101,9 +101,9 @@ def train():
     print("load data......")
     # images, lables = load_data()
     images = np.load("./data/cd_data.npy")
-    lables = np.load("./data/cd_label.npy")
+    labels = np.load("./data/cd_label.npy")
     images /= 255
-    X_train, X_test, y_train, y_test = train_test_split(images, lables, test_size=0.15)
+    X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.15)
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
     network = build_net(x)

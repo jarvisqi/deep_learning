@@ -11,9 +11,9 @@ from sklearn.model_selection import train_test_split
 from keras.applications.resnet50 import preprocess_input, decode_predictions
 
 np.random.seed(7)
-img_h, img_w = 150, 150
-image_size = (150, 150)
-nbatch_size = 128
+img_h, img_w = 120, 120
+image_size = (120, 120)
+nbatch_size = 256
 nepochs = 48
 nb_classes = 2
 
@@ -73,9 +73,14 @@ def main():
     model.compile(loss='binary_crossentropy',optimizer=sgd, metrics=['accuracy'])
 
     print("load_data......")
-    images, lables = load_data()
+    # images, lables = load_data()
+    # images, lables = load_data()
+    images = np.load("./data/cd_data.npy")
+    labels = np.load("./data/cd_label.npy")
+    labels = np_utils.to_categorical(labels, 2)
     images /= 255
-    x_train, x_test, y_train, y_test = train_test_split(images, lables, test_size=0.2)
+
+    x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2)
     print(x_train.shape,y_train.shape)
 
     print("train.......")
@@ -117,8 +122,8 @@ def pred_data():
 
 if __name__ == '__main__':
 
-    # main()
+    main()
 
-    pred_data()
+    # pred_data()
 
     # load_data()
