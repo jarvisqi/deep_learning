@@ -13,6 +13,7 @@ np.random.seed(1024)
 # np.random.seed(19260816)
 img_h, img_w, img_c = 120, 120, 3
 n_classes = 2
+kernel_size=(5,5)
 
 # 定义  placeholder 占位符
 x = tf.placeholder(tf.float32, shape=[None, img_h, img_w, img_c], name='x')
@@ -54,19 +55,19 @@ def build_net(x):
     """
     print("build network")
     network = tl.layers.InputLayer(x, name='input_layer')
-    network = tl.layers.Conv2d(network, n_filter=32, filter_size=(5, 5), act=tf.nn.relu, name='conv2d1')
+    network = tl.layers.Conv2d(network, n_filter=32, filter_size=kernel_size, act=tf.nn.relu, name='conv2d1')
     network = tl.layers.MaxPool2d(network, name='maxpool1')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout1')
 
-    network = tl.layers.Conv2d(network, n_filter=64, filter_size=(5, 5), act=tf.nn.relu, name='conv2d2')
+    network = tl.layers.Conv2d(network, n_filter=64, filter_size=kernel_size, act=tf.nn.relu, name='conv2d2')
     network = tl.layers.MaxPool2d(network, name='maxpool2')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout2')
 
-    network = tl.layers.Conv2d(network, n_filter=128, filter_size=(5, 5), act=tf.nn.relu, name='conv2d3')
+    network = tl.layers.Conv2d(network, n_filter=128, filter_size=kernel_size, act=tf.nn.relu, name='conv2d3')
     network = tl.layers.MaxPool2d(network, name='maxpool3')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout3')
 
-    network = tl.layers.Conv2d(network, n_filter=256, filter_size=(5, 5), act=tf.nn.relu, name='conv2d4')
+    network = tl.layers.Conv2d(network, n_filter=256, filter_size=kernel_size, act=tf.nn.relu, name='conv2d4')
     network = tl.layers.MaxPool2d(network, name='maxpool4')
     network = tl.layers.DropoutLayer(network, keep=0.5, name='dropout4')
 
