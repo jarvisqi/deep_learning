@@ -11,8 +11,8 @@ from sklearn.model_selection import train_test_split
 from keras.applications.resnet50 import preprocess_input, decode_predictions
 
 np.random.seed(7)
-img_h, img_w = 120, 120
-image_size = (120, 120)
+img_h, img_w = 150, 150
+image_size = (150, 150)
 nbatch_size = 256
 nepochs = 48
 nb_classes = 2
@@ -122,8 +122,10 @@ def pred_data():
 
 if __name__ == '__main__':
 
-    main()
+    # main()
 
     # pred_data()
 
     # load_data()
+
+    pred_data()
