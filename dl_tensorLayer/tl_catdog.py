@@ -145,11 +145,14 @@ def test_predict():
     y = network.outputs
     y_op = tf.argmax(tf.nn.softmax(y), 1)
 
-    img = pil_image.open("./predict_img/cat_dog/c_1.jpg")
-    img = img.resize((img_h, img_w))
-    img = np.expand_dims(img, axis=0)
-    result = tl.utils.predict(sess, network, img, x, y_op)
-    print(result)
+    images = []
+    path='./data/test/'
+    for f in os.listdir(path):
+        img = pil_image.open(path + f)
+        img = img.resize((img_h, img_w))
+        img = np.expand_dims(img, axis=0)
+        result = tl.utils.predict(sess, network, img, x, y_op)
+        print(f,result[0])    
 
     sess.close()
 
