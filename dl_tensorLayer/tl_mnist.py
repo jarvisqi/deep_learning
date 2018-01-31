@@ -48,7 +48,7 @@ def main():
                   x, y_, batch_size=None, cost=cost)
 
     # 把模型保存成 .npz 文件
-    tl.files.save_npz(network.all_params, name='./models/model.npz')
+    tl.files.save_npz(network.all_params, name='./models/mnist_model.npz')
     sess.close()
 
 
@@ -83,7 +83,7 @@ def predict_mnist():
     sess = tf.InteractiveSession()
     network = build_net(x)
     # 加载模型
-    tl.files.load_and_assign_npz(sess, name="./models/model.npz", network=network)
+    tl.files.load_and_assign_npz(sess, name="./models/mnist_model.npz", network=network)
     y = network.outputs
     y_op = tf.argmax(tf.nn.softmax(y), 1)
 

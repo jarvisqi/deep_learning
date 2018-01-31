@@ -7,10 +7,9 @@ from skimage import io, transform
 from keras.preprocessing import image as kimg
 from keras.utils import np_utils
 from sklearn.model_selection import train_test_split
-
+from PIL import Image as pil_image
 
 np.random.seed(1024)
-# np.random.seed(19260816)
 img_h, img_w, img_c = 120, 120, 3
 n_classes = 2
 kernel_size=(5,5)
@@ -29,8 +28,9 @@ def load_data():
     images = []
     labels = []
     for f in files:
-        img = kimg.load_img(path + f, target_size=(img_h, img_w))
-        img_array = kimg.img_to_array(img)
+        img = pil_image.open(path+f)
+        img = img.resize((img_h, img_w))
+        img_array = np.asarray(img)/255
         images.append(img_array)
         if 'cat' in f:
             labels.append(0)
@@ -38,6 +38,7 @@ def load_data():
             labels.append(1)
 
     data = np.array(images)
+    print(data.shape)
     labels = np.array(labels)
 
     if os.path.exists("./data/cd_data.npy"):
@@ -46,7 +47,6 @@ def load_data():
     np.save("./data/cd_data.npy", data)
     np.save("./data/cd_label.npy", labels)
 
-    return data, labels
 
 
 def build_net(x):
@@ -103,7 +103,7 @@ def train():
     # images, lables = load_data()
     images = np.load("./data/cd_data.npy")
     labels = np.load("./data/cd_label.npy")
-    images /= 255
+
     X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.15)
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
@@ -119,8 +119,8 @@ def train():
     # 初始化 Session 中所有参数
     tl.layers.initialize_global_variables(sess)
     # 打印模型和参数信息
-    network.print_layers()
-    network.print_params()
+    # network.print_layers()
+    # network.print_params()
 
     print("fit......")
     # 训练
@@ -130,7 +130,7 @@ def train():
     print("test......")
     # 评估模型
     tl.utils.test(sess, network, acc, X_test, y_test, x, y_, batch_size=256)
-    tl.files.save_ckpt(sess=sess,mode_name='tl_catdog_model.ckpt',save_dir='./models/checkpoint')
+    tl.files.save_npz(network.all_params, name='./models/cd_model.npz')
 
     sess.close()
 
@@ -141,14 +141,14 @@ def test_predict():
     network = build_net(x)
 
     # 加载模型
-    tl.files.load_and_assign_npz(sess, name="./models/model.npz", network=network)
+    tl.files.load_and_assign_npz(sess, name="./models/cd_model.npz", network=network)
     y = network.outputs
     y_op = tf.argmax(tf.nn.softmax(y), 1)
 
-    img = read_one_image("./predict_img/cat_dog/c_1.jpg")
-    x_test = np.array([img.reshape(-1)])
-    tx = tf.convert_to_tensor(img)
-    result = tl.utils.predict(sess, network, x_test, x, y_op)
+    img = pil_image.open("./predict_img/cat_dog/c_1.jpg")
+    img = img.resize((img_h, img_w))
+    img = np.expand_dims(img, axis=0)
+    result = tl.utils.predict(sess, network, img, x, y_op)
     print(result)
 
     sess.close()
@@ -156,8 +156,9 @@ def test_predict():
 
 if __name__ == '__main__':
 
-    print(x.shape, y_.shape)
-
     # load_data()
 
-    train()
+    # train()
+
+    test_predict()
+
