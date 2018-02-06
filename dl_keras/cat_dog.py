@@ -122,10 +122,10 @@ def pred_data():
 
 if __name__ == '__main__':
 
-    # main()
+    main()
 
     # pred_data()
 
     # load_data()
 
-    pred_data()
+    # pred_data()
