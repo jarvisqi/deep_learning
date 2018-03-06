@@ -217,7 +217,7 @@ def fit():
         #计算出评分，要注意两个不同的方案，inference的名字（name值）是不一样的，后面做推荐时要根据name取得tensor
         with tf.name_scope("inference"):
             inference = tf.reduce_sum(user_combine_layer_flat * movie_combine_layer_flat, axis=1)
-            inference = tf.expand_dims(inference, axis=1,name="inference_sum")
+            inference = tf.expand_dims(inference, axis=1)
 
         # 定义损失函数
         with tf.name_scope("loss"):
