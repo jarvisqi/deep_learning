@@ -143,11 +143,13 @@ def user_feature_matrics():
     # 保存
     pickle.dump((np.array(users_matrics).reshape(-1, 200)), open('./data/ml-1m/users_matrics.p', 'wb'))
 
-
     # users_matrics = pickle.load(open('users_matrics.p', mode='rb'))
 
 
-def recommend_sametype_movie(movie_id, top_k = 10):
+def recommend_sametype_movie(movie_id, top_k = 10,isprint=True):
+    """
+    推荐同类型的电影
+    """
     # 读取保存的电影特征
     movie_matrics = pickle.load(open('./data/ml-1m/movie_matrics.p', mode='rb'))
     loaded_graph = tf.Graph()
@@ -156,31 +158,35 @@ def recommend_sametype_movie(movie_id, top_k = 10):
         loader = tf.train.import_meta_graph(load_dir + '.meta')
         loader.restore(sess, load_dir)
         # 特征数据归一化
-        norm_movie_matrics = tf.sqrt(tf.reduce_sum(tf.square(movie_matrics),1,keep_dims=True))      #求模
+        norm_movie_matrics = tf.sqrt(tf.reduce_sum(tf.square(movie_matrics),1,keepdims=True))      #求模
         normalized_movie_matrics = movie_matrics / norm_movie_matrics
 
         #推荐同类型的电影  计算余弦相似度
-        probs_embeddings = (movie_matrics[movieid2idx[movie_id]]).reshape([1, 200])                 # 输入的movie特征值
-        probs_similarity = tf.matmul(probs_embeddings, tf.transpose(normalized_movie_matrics))      # 内积
+        input_embeddings = (movie_matrics[movieid2idx[movie_id]]).reshape([1, 200])                  # 输入的movie特征值
+        probs_similarity = tf.matmul(input_embeddings, tf.transpose(normalized_movie_matrics))       # 内积
         # sim = (probs_similarity.eval())
         sim = sess.run(probs_similarity)
 
+        p = sim[0]            
+        p[np.argsort(p)[:-top_k]] = 0           # 除了top_k个保留值，其他的都置为0
+        score = p / np.sum(p)
+        # print([x for x in score if x > 0])
+        results = set()
+        while len(results) != top_k:
+            choice = np.random.choice(len(score), 1, p=score)[0]
+            results.add(choice)
+
+        if isprint:
         print("您看的电影是：{}".format(movies_orig[movieid2idx[movie_id]]))
         print("以下是给您的推荐：")
-        p = np.squeeze(sim)             # 从数组的形状中删除单维条目，即把shape中为1的维度去掉
-        p[np.argsort(p)[:-top_k]] = 0   # 按升序排列 返回的是数组值从小到大的索引值
-        p = p / np.sum(p)
-        results = set()
-        while len(results) != 10:
-            c = np.random.choice(3883, 1, p=p)[0]
-            results.add(c)
-
-        for val in (results):
-            print(val)
-            print(movies_orig[val])
+            for val in (results):
+                print(val, "\t", movies_orig[val])
 
         return results
 
+
+
+
 if __name__ == '__main__':
     
-    recommend_sametype_movie(1401)
+    recommend_sametype_movie(1401,top_k =5)
