@@ -4,13 +4,19 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf 
 from PIL import Image
 
+
 def writer_TFRecord():
     """
-    生成TFRecords文件
+    生成TFRecords多个文件
     """
-    with tf.python_io.TFRecordWriter("./data/train.tfrecords") as writer:
-        root_path = "./data/train/"
-        for img_name in os.listdir(root_path):
+    root_path = "./data/train/"
+    filelist = os.listdir(root_path)
+    j = 0
+    for i in range(0, len(filelist), 5000):
+        shards = filelist[i:i+5000]
+        j += 1
+        writer = tf.python_io.TFRecordWriter("./data/tfrecord/train.tfrecords_00{}".format(j))
+        for img_name in shards:
             img_path = root_path + img_name
             img = Image.open(img_path)
             img = img.resize((224, 224))
@@ -24,13 +30,16 @@ def writer_TFRecord():
                 "image": tf.train.Feature(bytes_list=tf.train.BytesList(value=[img_raw])),
             }))
             writer.write(example.SerializeToString())   # 序列化为字符串
+        writer.close()
+
+    print("TFRecord Saved")
 
 
 def read_TFRecord():
     """
-    读取TFRecords文件
+    简单读取TFRecords文件
     """
-    for serialized_example in tf.python_io.tf_record_iterator("./data/train.tfrecords"):
+    for serialized_example in tf.python_io.tf_record_iterator("./data/tfrecord/train.tfrecords_001"):
         example = tf.train.Example()
         example.ParseFromString(serialized_example)
 
@@ -40,12 +49,17 @@ def read_TFRecord():
         print(type(image), label)
         break
 
+
 def queue_read_TFRecord():
     """
     使用队列读取TFRecords文件
     """
 
-    filename_queue = tf.train.string_input_producer(["./data/train.tfrecords"])
+    filename_queue = tf.train.string_input_producer(["./data/tfrecord/train.tfrecords_001",
+                                                     "./data/tfrecord/train.tfrecords_002",
+                                                     "./data/tfrecord/train.tfrecords_003",
+                                                     "./data/tfrecord/train.tfrecords_004",
+                                                     "./data/tfrecord/train.tfrecords_005"])
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
     features = tf.parse_single_example(serialized_example, features={
@@ -63,17 +77,19 @@ def queue_read_TFRecord():
 def main():
     
     image, label = queue_read_TFRecord()
-    img_batch, label_batch = tf.train.shuffle_batch(
-        [image, label], batch_size=32, capacity=2000, min_after_dequeue=1000)
-    
+    #多线程随机batch生成 capacity是队列的长度  min_after_dequeue是出队后，队列至少剩下min_after_dequeue个数据
+    img_batch, label_batch = tf.train.shuffle_batch([image, label], batch_size=32, num_threads=4,
+                                                    capacity=20, min_after_dequeue=10)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
-        threads = tf.train.start_queue_runners(sess=sess)
-        for i in range(3):
-            val, l= sess.run([img_batch, label_batch])
-            print(val.shape, l)
-
+        coord = tf.train.Coordinator()          # 多线程
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+        for i in range(10):
+            val, l = sess.run([img_batch, label_batch])
+            print(val.shape, l.shape)
+        coord.request_stop()
+        coord.join(threads)
 
 
 if __name__ == '__main__':
