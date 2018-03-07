@@ -78,8 +78,10 @@ def main():
     
     image, label = queue_read_TFRecord()
     #多线程随机batch生成 capacity是队列的长度  min_after_dequeue是出队后，队列至少剩下min_after_dequeue个数据
-    img_batch, label_batch = tf.train.shuffle_batch([image, label], batch_size=32, num_threads=4,
-                                                    capacity=20, min_after_dequeue=10)
+    batch_size = 32
+    capacity = 100+10*batch_size
+    img_batch, label_batch = tf.train.shuffle_batch([image, label], batch_size=batch_size, num_threads=4,
+                                                    capacity=capacity, min_after_dequeue=100)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
@@ -87,7 +89,7 @@ def main():
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         for i in range(10):
             val, l = sess.run([img_batch, label_batch])
-            print(val.shape, l.shape)
+            print(val.shape, l)
         coord.request_stop()
         coord.join(threads)
 
