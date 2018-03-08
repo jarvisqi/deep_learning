@@ -76,10 +76,12 @@ def get_inputs():
     movie_id = tf.placeholder(tf.int32, [None, 1], name="movie_id")
     movie_categories = tf.placeholder(tf.int32, [None, 18], name="movie_categories")
     movie_titles = tf.placeholder(tf.int32, [None, 15], name="movie_titles")
+
     targets = tf.placeholder(tf.int32, [None, 1], name="targets")
     LearningRate = tf.placeholder(tf.float32, name="LearningRate")
     dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
-    inference = tf.placeholder(tf.float32, name="inference")
+    y_pred = tf.placeholder(tf.float32, name="y_pred")
+    
     return uid, user_gender, user_age, user_job, movie_id, movie_categories, movie_titles, targets, LearningRate, dropout_keep_prob
 
 
@@ -215,14 +217,14 @@ def fit():
         #得到电影特征
         movie_combine_layer, movie_combine_layer_flat = get_movie_feature_layer(movie_id_embed_layer,movie_categories_embed_layer,dropout_layer)
         #计算出评分，要注意两个不同的方案，inference的名字（name值）是不一样的，后面做推荐时要根据name取得tensor
-        with tf.name_scope("inference"):
-            inference = tf.reduce_sum(user_combine_layer_flat * movie_combine_layer_flat, axis=1)
-            inference = tf.expand_dims(inference, axis=1)
+        with tf.name_scope("y_pred"):
+            y_pred = tf.reduce_sum(user_combine_layer_flat * movie_combine_layer_flat, axis=1)
+            y_pred = tf.expand_dims(y_pred, axis=1)
 
         # 定义损失函数
         with tf.name_scope("loss"):
             # MSE损失，将计算值回归到评分
-            cost = tf.losses.mean_squared_error(targets, inference)
+            cost = tf.losses.mean_squared_error(targets, y_pred)
             loss = tf.reduce_mean(cost)
         # 优化损失 
         #train_op = tf.train.AdamOptimizer(lr).minimize(loss)  #cost

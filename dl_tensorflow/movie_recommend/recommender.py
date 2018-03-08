@@ -24,10 +24,10 @@ def get_param_tensors(loaded_graph):
     targets = loaded_graph.get_tensor_by_name("targets:0")
     dropout_keep_prob = loaded_graph.get_tensor_by_name("dropout_keep_prob:0")
     lr = loaded_graph.get_tensor_by_name("LearningRate:0")
-    #两种不同计算预测评分的方案使用不同的name获取tensor inference
-    inference = loaded_graph.get_tensor_by_name("inference/ExpandDims:0")#
+    #两种不同计算预测评分的方案使用不同的name获取tensor y_pred
+    y_pred = loaded_graph.get_tensor_by_name("y_pred/ExpandDims:0")#
     user_combine_layer_flat = loaded_graph.get_tensor_by_name("user_fc/Reshape:0")
-    return targets, lr, dropout_keep_prob, inference
+    return targets, lr, dropout_keep_prob, y_pred
 
 
 
@@ -61,7 +61,7 @@ def rating_movie(user_id_val, movie_id_val):
         # Load saved model
         loader = tf.train.import_meta_graph(load_dir + '.meta')
         loader.restore(sess, load_dir)
-        targets, lr, dropout_keep_prob, inference = get_param_tensors(loaded_graph) 
+        targets, lr, dropout_keep_prob, y_pred = get_param_tensors(loaded_graph) 
         uid, user_gender, user_age, user_job, _ = get_user_tensors(loaded_graph)  
         movie_id, movie_categories, movie_titles, _ = get_movie_tensors(loaded_graph) 
 
@@ -81,7 +81,7 @@ def rating_movie(user_id_val, movie_id_val):
             movie_titles: titles,  # x.take(5,1)
             dropout_keep_prob: 1}
         # Get Prediction
-        inference_val = sess.run([inference], feed)
+        inference_val = sess.run([y_pred], feed)
 
         return (inference_val)
 
@@ -97,7 +97,7 @@ def movie_feature_matrics():
         loader = tf.train.import_meta_graph(load_dir + '.meta')
         loader.restore(sess, load_dir)
         # Get Tensors from loaded model
-        targets, lr, dropout_keep_prob, inference = get_param_tensors(loaded_graph) 
+        targets, lr, dropout_keep_prob, y_pred = get_param_tensors(loaded_graph) 
         movie_id, movie_categories, movie_titles, movie_combine_layer_flat = get_movie_tensors(loaded_graph) 
         for item in movies.values:
             categories = np.zeros([1, 18])
@@ -128,7 +128,7 @@ def user_feature_matrics():
         loader = tf.train.import_meta_graph(load_dir + '.meta')
         loader.restore(sess, load_dir)
 
-        targets, lr, dropout_keep_prob, inference = get_param_tensors(loaded_graph)
+        targets, lr, dropout_keep_prob, y_pred = get_param_tensors(loaded_graph)
         uid, user_gender, user_age, user_job,user_combine_layer_flat = get_user_tensors(loaded_graph)
 
         for item in users.values:
