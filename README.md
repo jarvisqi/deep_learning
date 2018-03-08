@@ -10,4 +10,4 @@ deep learning 相关实例
 
 ## 其他的。。。
 
-主要使用 Keras + TensorFlow ，训练数据太大暂不上传
+训练数据太大没有上传
