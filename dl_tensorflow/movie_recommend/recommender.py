@@ -4,6 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import pickle
 import numpy as np
+import random
 from collections import Counter
 from network import load_params
 
@@ -143,10 +144,10 @@ def user_feature_matrics():
     # 保存
     pickle.dump((np.array(users_matrics).reshape(-1, 200)), open('./data/ml-1m/users_matrics.p', 'wb'))
 
-    # users_matrics = pickle.load(open('users_matrics.p', mode='rb'))
 
 
-def recommend_sametype_movie(movie_id, top_k = 10,isprint=True):
+
+def recommend_sametype_movie(movie_id, top_k = 10):
     """
     推荐同类型的电影
     """
@@ -162,8 +163,8 @@ def recommend_sametype_movie(movie_id, top_k = 10,isprint=True):
         normalized_movie_matrics = movie_matrics / norm_movie_matrics
 
         #推荐同类型的电影  计算余弦相似度
-        input_embeddings = (movie_matrics[movieid2idx[movie_id]]).reshape([1, 200])                  # 输入的movie特征值
-        probs_similarity = tf.matmul(input_embeddings, tf.transpose(normalized_movie_matrics))       # 内积
+        movie_embeddings = (movie_matrics[movieid2idx[movie_id]]).reshape([1, 200])                  # 输入的movie特征值
+        probs_similarity = tf.matmul(movie_embeddings, tf.transpose(normalized_movie_matrics))       # 内积
         # sim = (probs_similarity.eval())
         sim = sess.run(probs_similarity)
 
@@ -176,17 +177,88 @@ def recommend_sametype_movie(movie_id, top_k = 10,isprint=True):
             choice = np.random.choice(len(score), 1, p=score)[0]
             results.add(choice)
 
-        if isprint:
         print("您看的电影是：{}".format(movies_orig[movieid2idx[movie_id]]))
         print("以下是给您的推荐：")
-            for val in (results):
-                print(val, "\t", movies_orig[val])
+        for val in (results):
+            print(val, "\t", movies_orig[val])
 
         return results
 
 
+def recommend_favorite_movie(user_id,top_k=10):
+    """
+    推荐您喜欢的电影
+    """
+    users_matrics = pickle.load(open('./data/ml-1m/users_matrics.p', mode='rb'))
+    movie_matrics = pickle.load(open('./data/ml-1m/movie_matrics.p', mode='rb'))    
+    loaded_graph = tf.Graph()  #
+    with tf.Session(graph=loaded_graph) as sess:  #
+        loader=tf.train.import_meta_graph(load_dir + '.meta')
+        loader.restore(sess,load_dir)
+
+        # print((users_matrics[user_id-1]).shape)
+        # print((users_matrics[user_id-1]).reshape([1, 200]).shape)
+        # print(movie_matrics.shape)
+        # print(tf.transpose(movie_matrics).shape)
+        user_embeddings = (users_matrics[user_id-1]).reshape([1, 200])
+        # 矩阵转置相乘
+        probs_similarity = tf.matmul(user_embeddings, tf.transpose(movie_matrics))
+        sim = sess.run(probs_similarity)
+        p = sim[0]            
+        p[np.argsort(p)[:-top_k]] = 0           # 除了top_k个保留值，其他的都置为0
+        score = p / np.sum(p)
+
+        results = set()
+        while len(results) != top_k:
+            choice = np.random.choice(len(score), 1, p=score)[0]
+            results.add(choice)
+        print("以下是给您的推荐：")
+        for val in (results):
+            print(val, "\t", movies_orig[val])
+
+        return results
+
+
+def recommend_other_favorite_movie(movie_id, top_k = 20):
+    """
+    看过这个电影的人还看了（喜欢）哪些电影
+    """
+    users_matrics = pickle.load(open('./data/ml-1m/users_matrics.p', mode='rb'))
+    movie_matrics = pickle.load(open('./data/ml-1m/movie_matrics.p', mode='rb'))    
+    loaded_graph = tf.Graph()  #
+    with tf.Session(graph=loaded_graph) as sess:  #
+        loader=tf.train.import_meta_graph(load_dir + '.meta')
+        loader.restore(sess,load_dir)
+        movie_embeddings = (movie_matrics[movieid2idx[movie_id]]).reshape([1, 200])                  # 输入的movie特征值
+        # 矩阵转置相乘
+        probs_similarity = tf.matmul(movie_embeddings, tf.transpose(users_matrics))  
+        mov_sim = sess.run(probs_similarity)
+        favorite_user_id = np.argsort(mov_sim)[0][-top_k:]
+
+        print("您看的电影是：{}".format(movies_orig[movieid2idx[movie_id]]))
+        print("喜欢看这个电影的人是：{}".format(users_orig[favorite_user_id-1]))
+
+        user_embeddings = (users_matrics[favorite_user_id-1]).reshape([-1, 200])
+        probs_similarity = tf.matmul(user_embeddings, tf.transpose(movie_matrics))
+        usr_sim = sess.run(probs_similarity)
+        favorite_index = np.argmax(usr_sim, 1)                       # 返回1轴最大值的所以
+        print(favorite_index)
+        print("喜欢看这个电影的人还喜欢看：")
+        results = set()
+        while len(results) != 5:
+            t = random.randrange(top_k)
+            choice = favorite_index[t]
+            results.add(choice)
+        for val in (results):
+            print(val)
+            print(movies_orig[val])
+
+        return results
 
 
 if __name__ == '__main__':
     
-    recommend_sametype_movie(1401,top_k =5)
+    # recommend_sametype_movie(1401,top_k =5)
+    # recommend_favorite_movie(234)
+    recommend_other_favorite_movie(1401)
+
