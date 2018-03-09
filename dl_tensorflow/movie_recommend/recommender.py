@@ -23,7 +23,7 @@ load_dir = load_params()
 def get_param_tensors(loaded_graph):
     targets = loaded_graph.get_tensor_by_name("targets:0")
     dropout_keep_prob = loaded_graph.get_tensor_by_name("dropout_keep_prob:0")
-    lr = loaded_graph.get_tensor_by_name("LearningRate:0")
+    lr = loaded_graph.get_tensor_by_name("learning_rate:0")
     #两种不同计算预测评分的方案使用不同的name获取tensor y_pred
     y_pred = loaded_graph.get_tensor_by_name("y_pred/ExpandDims:0")#
     user_combine_layer_flat = loaded_graph.get_tensor_by_name("user_fc/Reshape:0")
@@ -81,9 +81,9 @@ def rating_movie(user_id_val, movie_id_val):
             movie_titles: titles,  # x.take(5,1)
             dropout_keep_prob: 1}
         # Get Prediction
-        inference_val = sess.run([y_pred], feed)
-
-        return (inference_val)
+        rating_val = sess.run([y_pred], feed)
+        print(rating_val)
+        return (rating_val)
 
 
 def movie_feature_matrics():
@@ -257,8 +257,8 @@ def recommend_other_favorite_movie(movie_id, top_k = 20):
 
 
 if __name__ == '__main__':
-    
+    rating_movie(234,1401)
     # recommend_sametype_movie(1401,top_k =5)
     # recommend_favorite_movie(234)
-    recommend_other_favorite_movie(1401)
+    # recommend_other_favorite_movie(1401)
 

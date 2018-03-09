@@ -64,7 +64,18 @@ def get_batches(Xs, ys, batch_size):
         end = min(start + batch_size, len(Xs))
         yield Xs[start:end], ys[start:end]
 
-def get_inputs():
+def get_params_inputs():
+    """
+    定义输入的占位符
+    """
+    targets = tf.placeholder(tf.int32, [None, 1], name="targets")
+    learningRate = tf.placeholder(tf.float32, name="learning_rate")
+    dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
+    y_ = tf.placeholder(tf.float32, name="y_")
+    
+    return targets, learningRate, dropout_keep_prob
+
+def get_usr_inputs():
     """
     定义输入的占位符
     """
@@ -72,17 +83,18 @@ def get_inputs():
     user_gender = tf.placeholder(tf.int32, [None, 1], name="user_gender")
     user_age = tf.placeholder(tf.int32, [None, 1], name="user_age")
     user_job = tf.placeholder(tf.int32, [None, 1], name="user_job")
+    
+    return uid, user_gender, user_age, user_job
 
+def get_movie_inputs():
+    """
+    定义输入的占位符
+    """
     movie_id = tf.placeholder(tf.int32, [None, 1], name="movie_id")
     movie_categories = tf.placeholder(tf.int32, [None, 18], name="movie_categories")
     movie_titles = tf.placeholder(tf.int32, [None, 15], name="movie_titles")
-
-    targets = tf.placeholder(tf.int32, [None, 1], name="targets")
-    LearningRate = tf.placeholder(tf.float32, name="LearningRate")
-    dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
-    y_pred = tf.placeholder(tf.float32, name="y_pred")
     
-    return uid, user_gender, user_age, user_job, movie_id, movie_categories, movie_titles, targets, LearningRate, dropout_keep_prob
+    return movie_id, movie_categories, movie_titles
 
 
 def get_user_embedding(uid, user_gender, user_age, user_job):
@@ -147,7 +159,6 @@ def get_movie_categories_layers(movie_categories):
     return movie_categories_embed_layer
 
 
-
 def get_movie_cnn_layer(movie_titles):
     """
     Movie Title的文本卷积网络实现
@@ -203,7 +214,9 @@ def fit():
     train_graph = tf.Graph()
     with train_graph.as_default():
         #获取输入占位符
-        uid, user_gender, user_age, user_job, movie_id, movie_categories, movie_titles, targets, lr, dropout_keep_prob = get_inputs()
+        targets, lr, dropout_keep_prob = get_params_inputs()
+        uid, user_gender, user_age, user_job = get_usr_inputs()
+        movie_id, movie_categories, movie_titles = get_movie_inputs()
         #获取User的4个嵌入向量
         uid_embed_layer, gender_embed_layer, age_embed_layer, job_embed_layer = get_user_embedding(uid, user_gender, user_age, user_job)
         #得到用户特征
@@ -350,3 +363,12 @@ def fit():
 
 if __name__ == '__main__':
     fit()
+
+    # uid, user_gender, user_age, user_job = get_usr_inputs()
+    # print(uid.shape,user_gender.shape,user_age.shape,user_job.shape)
+    # #获取User的4个嵌入向量
+    # uid_embed_layer, gender_embed_layer, age_embed_layer, job_embed_layer = get_user_embedding(uid, user_gender, user_age, user_job)
+    # print(uid_embed_layer.shape,gender_embed_layer.shape,age_embed_layer.shape,job_embed_layer.shape)
+    
+    # user_combine_layer, user_combine_layer_flat = get_user_feature_layer(uid_embed_layer, gender_embed_layer, age_embed_layer, job_embed_layer)
+    # print(user_combine_layer.shape,user_combine_layer_flat.shape)
