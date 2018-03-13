@@ -204,7 +204,7 @@ def get_movie_feature_layer(movie_id_embed_layer, movie_categories_embed_layer, 
         #第二层全连接
         movie_combine_layer = tf.concat([movie_id_fc_layer, movie_categories_fc_layer, dropout_layer], 2)  #(?, 1, 96)
         movie_combine_layer = tf.contrib.layers.fully_connected(movie_combine_layer, 200, tf.tanh)  #(?, 1, 200)
-    
+
         movie_combine_layer_flat = tf.reshape(movie_combine_layer, [-1, 200])
     return movie_combine_layer, movie_combine_layer_flat
 
