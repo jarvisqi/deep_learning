@@ -29,7 +29,7 @@ def load_data(batch_size):
 
 def train(epochs=None, batch_size=32):
     """
-    可视化
+    训练
     """
 
     train_loader, test_loader = load_data(batch_size)
