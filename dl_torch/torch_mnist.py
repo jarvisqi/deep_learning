@@ -3,12 +3,11 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import numpy as np
 import torch
-import torch.nn.functional as fn
 from torch.autograd import Variable
 import torchvision
 from tensorboardX import SummaryWriter
 
-torch.manual_seed(1)  
+torch.manual_seed(1024)  
   
 nbatch_size = 128
 nclass = 10
@@ -79,7 +78,6 @@ def train():
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-
 
     writer = SummaryWriter('./logs/troch/')
     for epoch in range(epochs):
