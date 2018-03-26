@@ -36,14 +36,14 @@ class CNN(torch.nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)  # (16,28,28) 
-        self.relu1=torch.nn.ReLU()                                       # 想要con2d卷积出来的图片尺寸没有变化, padding=(kernel_size-1)/2  
-        self.maxPool1 = torch.nn.MaxPool2d(kernel_size=2)                # (16,14,14)  
+        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)      # Conv2d out: (16,28,28) 
+        self.relu1=torch.nn.ReLU()                                      
+        self.maxPool1 = torch.nn.MaxPool2d(kernel_size=2)                                           # MaxPool2d out: (16,14,14)  
         self.dropout1 = torch.nn.Dropout(p=0.5)
 
-        self.conv2 = torch.nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2)   # (32,14,14)  
+        self.conv2 = torch.nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2)     # Conv2d out: (32,14,14)  
         self.relu2=torch.nn.ReLU()
-        self.maxPool2 = torch.nn.MaxPool2d(kernel_size=2)               # (32,7,7)  
+        self.maxPool2 = torch.nn.MaxPool2d(kernel_size=2)                                           # MaxPool2d out: (32,7,7)  
         self.dropout2 = torch.nn.Dropout(p=0.5)
         
         self.fc1 = torch.nn.Linear(32*7*7, nclass)
@@ -52,10 +52,12 @@ class CNN(torch.nn.Module):
         """
         前向传播
         """
-        x = self.maxPool1(self.relu1(self.conv1(x)))
+        x = self.relu1(self.conv1(x))
+        x = self.maxPool1(x)
         x = self.dropout1(x)
 
-        x = self.maxPool2(self.relu2(self.conv2(x)))
+        x = self.relu2(self.conv2(x))
+        x = self.maxPool2(x)
         x = self.dropout1(x)
 
         x = x.view(x.size(0), -1)
