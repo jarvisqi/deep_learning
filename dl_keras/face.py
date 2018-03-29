@@ -3,7 +3,6 @@ import struct
 import os
 import glob
 import yaml
-import cv2
 import pandas as pd
 import numpy as np
 from keras import regularizers

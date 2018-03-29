@@ -3,7 +3,6 @@ import os
 import torch
 import numpy as np
 from torch.autograd import Variable
-from tensorboardX import SummaryWriter
 import torchvision as tv
 from tensorboardX import SummaryWriter
 
