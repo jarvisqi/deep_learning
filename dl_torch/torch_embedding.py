@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import torch
 import torch.nn.functional as fn
 
