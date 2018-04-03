@@ -103,6 +103,8 @@ def load_data(opt: Config):
     ])
 
     test_transforms = tv.transforms.Compose([
+        tv.transforms.Resize(opt.image_size),
+        tv.transforms.RandomCrop(opt.image_size),
         tv.transforms.ToTensor(),
         tv.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
@@ -185,3 +187,4 @@ if __name__ == '__main__':
     # main()
 
     train()
+
