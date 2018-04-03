@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-from keras.models import Model
-from keras.layers.core import Dense, Dropout, Activation, Reshape,Permute
-from keras.layers.convolutional import Conv2D, Conv2DTranspose,ZeroPadding2D
-from keras.layers.pooling import AveragePooling2D,GlobalAveragePooling2D
-from keras.layers import Input,Flatten
+import os
+
+from keras.layers import Flatten, Input
+from keras.layers.convolutional import Conv2D, Conv2DTranspose, ZeroPadding2D
+from keras.layers.core import Activation, Dense, Dropout, Permute, Reshape
 from keras.layers.merge import concatenate
 from keras.layers.normalization import BatchNormalization
-from keras.regularizers import l2
+from keras.layers.pooling import AveragePooling2D, GlobalAveragePooling2D
 from keras.layers.wrappers import TimeDistributed
+from keras.models import Model
+from keras.regularizers import l2
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 def conv_block(input, growth_rate, dropout_rate=None, weight_decay=1e-4):

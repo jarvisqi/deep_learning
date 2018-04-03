@@ -186,5 +186,9 @@ def train():
 if __name__ == '__main__':
     # main()
 
-    train()
+    # train()
+
+    # resNet18 = ResNet(block_num=[2,2,2,2])
+    resNet34 = ResNet(block_num=[3,4,6,3])
+    print(resNet34)
 

@@ -1,18 +1,19 @@
-import base64
-import struct
-import os
 import glob
-import yaml
-import pandas as pd
+import os
+
 import numpy as np
+import pandas as pd
+import yaml
 from keras import regularizers
-from keras.models import Sequential, load_model, model_from_yaml
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
-from keras.optimizers import Adam, SGD
 from keras.callbacks import EarlyStopping
-from keras.utils import np_utils, plot_model
+from keras.layers import Conv2D, Dense, Dropout, Flatten, MaxPooling2D
+from keras.models import Sequential, load_model, model_from_yaml
+from keras.optimizers import SGD, Adam
 from keras.preprocessing import image
+from keras.utils import np_utils, plot_model
 from sklearn.model_selection import train_test_split
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 np.random.seed(1024)
 
