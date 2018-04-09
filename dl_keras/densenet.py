@@ -10,6 +10,7 @@ from keras.layers.pooling import AveragePooling2D, GlobalAveragePooling2D
 from keras.layers.wrappers import TimeDistributed
 from keras.models import Model
 from keras.regularizers import l2
+from keras.utils import plot_model
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -79,10 +80,14 @@ def dense_cnn(input, nclass):
     x = TimeDistributed(Flatten(), name='flatten')(x)
     y_pred = Dense(nclass, name='out', activation='softmax')(x)
 
-    #basemodel = Model(inputs=input,outputs=y_pred)
-    #basemodel.summary()
-    return y_pred
+    basemodel = Model(inputs=input,outputs=y_pred)
+    basemodel.summary()
+    return basemodel
 
 
-input = Input(shape=(32, 153, 1), name='the_input')
-dense_cnn(input, 1000)
+if __name__ == '__main__':
+    input = Input(shape=(32, 153, 1), name='the_input')
+    cnn = dense_cnn(input, 1000)
+    cnn.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
+    plot_model(cnn, to_file='./models/densenet.png')
+    cnn.summary()
