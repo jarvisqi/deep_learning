@@ -106,7 +106,7 @@ class ResNet(torch.nn.Module):
         x = self.layer3(x)      # [1, 512, 14, 14]
         x = self.layer4(x)      # [1, 512, 7, 7]
 
-        x = self.avgpool(7, stride=1)
+        x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
@@ -218,14 +218,10 @@ if __name__ == '__main__':
     # main()
 
     # train()
-   
-    x = Variable(torch.randn(1, 3, 100, 100), requires_grad=True)
-
-    # resNet18 = ResNet(BasicBlock,[2, 2, 2, 2])
+    x = Variable(torch.rand(1, 3, 224, 224))
+    resNet18 = ResNet(BasicBlock,[2, 2, 2, 2])
     # resNet34 = ResNet(BasicBlock,[3,4,6,3])
-    resNet50 = ResNet(Bottleneck,[3,4,6,3])
-    print(resNet50)
-    # y = resNet50(x)
-    # dot = make_dot(y, name="./images/resNet50", params=dict(list(resNet50.named_parameters()) + [('x', x)]))
-    # dot.format = 'pdf'
-    # dot.render()
+    # resNet50 = ResNet(Bottleneck,[3,4,6,3])
+
+    with SummaryWriter(comment='resnet18') as w:
+        w.add_graph(resNet18, (x, ))
