@@ -7,7 +7,7 @@ from torch.nn import functional as fn
 import sys
 
 sys.path.append("./utility/")
-from visualize import make_dot
+from pytorchviz import make_dot
 
 class BasicBlock(torch.nn.Module):
     expansion = 1
@@ -54,7 +54,7 @@ class Bottleneck(torch.nn.Module):
         out = self.left(x)
         residual = x if self.right is None else self.right(x)
         out += residual
-        out = fn.relu(out)
+        out = fn.relu(out, inplace=True)
         return out
 
 
@@ -79,16 +79,16 @@ class ResNet(torch.nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = torch.nn.AvgPool2d(7, stride=1)
-        self.fc = torch.nn.Linear(512* block.expansion, num_classes)
+        self.avgpool = torch.nn.AvgPool2d(7)
+        self.fc = torch.nn.Linear(512 * block.expansion, num_classes)
 
     def _make_layer(self, block, outchannel, block_num, stride=1):
         shortcut = None
         if stride != 1 or self.inchannel != outchannel * block.expansion:
-            outchannel = outchannel * block.expansion
+            out_dim = outchannel * block.expansion
             shortcut = torch.nn.Sequential(
-                torch.nn.Conv2d(self.inchannel, outchannel, kernel_size=1,stride=stride, bias=False),
-                torch.nn.BatchNorm2d(outchannel)
+                torch.nn.Conv2d(self.inchannel, out_dim, kernel_size=1,stride=stride, bias=False),
+                torch.nn.BatchNorm2d(out_dim)
             )
 
         layers = []
@@ -101,6 +101,7 @@ class ResNet(torch.nn.Module):
 
     def forward(self, x):
         x = self.pre(x)         # [1, 64, 56, 56]
+
         x = self.layer1(x)      # [1, 128, 56, 56]
         x = self.layer2(x)      # [1, 256, 28, 28]
         x = self.layer3(x)      # [1, 512, 14, 14]
@@ -219,9 +220,18 @@ if __name__ == '__main__':
 
     # train()
     x = Variable(torch.rand(1, 3, 224, 224))
-    resNet18 = ResNet(BasicBlock,[2, 2, 2, 2])
+    # resNet18 = ResNet(BasicBlock,[2, 2, 2, 2])
     # resNet34 = ResNet(BasicBlock,[3,4,6,3])
-    # resNet50 = ResNet(Bottleneck,[3,4,6,3])
+    resNet50 = ResNet(Bottleneck, [3, 4, 6, 3])
+    # resNet101 = ResNet(Bottleneck, [3, 4, 23, 3])
 
-    with SummaryWriter(comment='resnet18') as w:
-        w.add_graph(resNet18, (x, ))
+    # with SummaryWriter(comment='resNet101') as w:
+    #     w.add_graph(resNet101, (x, ))
+    y = resNet50(x)
+    # model = tv.models.resnet50()
+    # y = model(x)
+    print(y)
+    dot = make_dot(y, name="./images/resNet50",params=dict(list(resNet50.named_parameters()) + [('x', x)]))
+    # dot = make_dot(y, name="./images/resNet50",params=dict(list(model.named_parameters()) + [('x', x)]))
+    dot.format = "pdf"
+    dot.render()
