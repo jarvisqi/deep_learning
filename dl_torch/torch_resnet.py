@@ -225,7 +225,7 @@ if __name__ == '__main__':
     resNet50 = ResNet(Bottleneck, [3, 4, 6, 3])
     # resNet101 = ResNet(Bottleneck, [3, 4, 23, 3])
 
-    # with SummaryWriter(comment='resNet101') as w:
+    # with SummaryWriter(log_dir="./logs/troch",comment='resNet101') as w:
     #     w.add_graph(resNet101, (x, ))
     y = resNet50(x)
     # model = tv.models.resnet50()
