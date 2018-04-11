@@ -2,20 +2,24 @@
 # 多输出车牌识别
 
 import os
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+import sys
+
+import cv2
+import matplotlib
 import numpy as np
-from genplate import GenPlate
-from keras.models import Model,load_model
-from keras.layers import Input, Conv2D, MaxPool2D, Flatten, Dense, Dropout
-from keras.optimizers import Adam
 from keras import callbacks
 from keras.callbacks import ModelCheckpoint
-from keras.utils import vis_utils,plot_model,np_utils
+from keras.layers import Conv2D, Dense, Dropout, Flatten, Input, MaxPool2D
+from keras.models import Model, load_model
+from keras.optimizers import Adam
 from keras.preprocessing import image
-import matplotlib
+from keras.utils import np_utils, plot_model, vis_utils
 from matplotlib import pyplot as plt
-from IPython.display import SVG
-import cv2
+
+sys.path.append("./utility/")
+from genplate import GenPlate
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 np.random.seed(5)
 image_size = (272, 72)
@@ -30,9 +34,9 @@ def gen_plate():
     """
     车牌生成器
     """
-    G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./images/NoPlates")
+    gen = GenPlate()
     while True:
-        l_plateStr, l_plateImg = G.genBatch(1, 2, range(31, 65), "./images/plate", image_size)
+        l_plateStr, l_plateImg = gen.genBatch(32, 2, range(31, 65), "./images/plate", image_size)
         X = np.array(l_plateImg, dtype=np.uint8)
         ytmp = np.array(list(map(lambda x: [M_strIdx[a] for a in list(x)], l_plateStr)), dtype=np.uint8)
         y = np.zeros([ytmp.shape[1], nbatch_size, len(chars)])
@@ -88,7 +92,7 @@ def  predict_plate():
     # x_test = np.array(l_plateImg, dtype=np.uint8)
     # print(x_test.shape)
 
-    img = cv2.imread("../predict_img/TF521.jpg")  
+    img = cv2.imread("./predict_img/TF521.jpg")  
     img = cv2.resize(img, image_size)
     x_test = np.array([img], dtype=np.uint8)
     print(x_test.shape)
@@ -101,8 +105,8 @@ def  predict_plate():
 
 if __name__ == '__main__':
     
-    # main()
+    main()
 
-    predict_plate()
+    # predict_plate()
 
 

@@ -146,15 +146,18 @@ def addNoise(img, sdev=0.5, avg=10):
 
 
 class GenPlate:
+    """
+    生成车牌
+    """
 
-    def __init__(self, fontCh, fontEng, NoPlates):
-        self.fontC = ImageFont.truetype(fontCh, 43, 0)
-        self.fontE = ImageFont.truetype(fontEng, 60, 0)
+    def __init__(self):
+        self.fontC = ImageFont.truetype("./resources/font/platech.ttf", 43, 0)
+        self.fontE = ImageFont.truetype('./resources/font/platechar.ttf', 60, 0)
         self.img = np.array(Image.new("RGB", (226, 70), (255, 255, 255)))
-        self.bg = cv2.resize(cv2.imread("../images/template.bmp"), (226, 70))
+        self.bg = cv2.resize(cv2.imread("./images/template.bmp"), (226, 70))
         self.smu = cv2.imread("../images/smu2.jpg")
         self.noplates_path = []
-        for parent, parent_folder, filenames in os.walk(NoPlates):
+        for parent, parent_folder, filenames in os.walk("./images/NoPlates"):
             for filename in filenames:
                 path = parent + "/" + filename
                 self.noplates_path.append(path)
@@ -230,6 +233,6 @@ class GenPlate:
 
 
 if __name__ == '__main__':
-    G = GenPlate("./font/platech.ttf", './font/platechar.ttf', "./images/NoPlates")
+    G = GenPlate()
     G.genBatch(30000, 2, range(31, 65), "./images/plate_test", (272, 72))
     print('finished')
