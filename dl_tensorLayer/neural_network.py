@@ -82,6 +82,7 @@ class NeurNetWork(object):
             for j in range(len(self.weights)):
                 layer = np.atleast_2d(a[j])
                 delta = np.atleast_2d(deltas[j])
+                #更新参数： 学习速率 * 梯度
                 self.weights[j] += learn_rate * np.dot(layer.T, delta)
 
             # 更新偏向
