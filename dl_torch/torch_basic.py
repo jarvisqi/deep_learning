@@ -73,8 +73,27 @@ def net():
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
+def datatype():
+
+    a = torch.IntTensor([[1, 2, 3], [4, 5, 6]])
+    print(a)
+    b = a.float()                       # 转换成 float
+    # b = a.type(torch.FloatTensor)     # 转换成 float
+    print(b)
+    c = b.cuda()                        # GPU张量, 使用data.cuda()
+    print(c)
+    d = c.cpu()                         # CPU张量 使用data.cpu()
+    print(d)
+
+    n = np.random.randn(2, 2)
+    n_torch = torch.from_numpy(n)      # numpy 变量 转为  Tensor
+    print(n_torch)
+    n_numpy = n_torch.numpy()            # Tensor变量 转为 numpy
+    print(n_numpy)
+
 
 if __name__ == '__main__':
     # main()
 
-    grad()
+    # grad()
+    datatype()
