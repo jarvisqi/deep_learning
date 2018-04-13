@@ -70,22 +70,22 @@ class NeurNetWork(object):
                 tmp = np.dot(a[j], self.weights[j]) + self.bias[j]
                 a.append(self.activation(tmp))
             errors = y[i] - a[-1]
-            deltas = [errors * self.activation_deriv(a[-1]), ]   # 输出层的误差
+            deltas = [errors * self.activation_deriv(a[-1]), ]   # 输出层的误差 损失函数  损失值
             # 反向传播，对于隐藏层的误差
             for j in range(len(a) - 2, 0, -1):
                 tmp = np.dot(deltas[-1], self.weights[j].T) * \
                     self.activation_deriv(a[j])
                 deltas.append(tmp)
-            deltas.reverse()
+            deltas.reverse()                                    # 数组倒序  
 
-            # 更新权重
+            # 更新参数（权重）
             for j in range(len(self.weights)):
                 layer = np.atleast_2d(a[j])
                 delta = np.atleast_2d(deltas[j])
                 #更新参数： 学习速率 * 梯度
                 self.weights[j] += learn_rate * np.dot(layer.T, delta)
 
-            # 更新偏向
+            # 更新偏向值
             for j in range(len(self.bias)):
                 self.bias[j] += learn_rate * deltas[j]
 
