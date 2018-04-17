@@ -7,6 +7,14 @@ from tensorboardX import SummaryWriter
 
 
 class PoetryModel(torch.nn.Module):
+    """ LSM 模型
+    生成诗歌
+    Arguments:
+        torch {[type]} -- [description]
+    
+    Returns:
+        [type] -- [description]
+    """
 
     def __init__(self, vocab_size, embedding_dim, hidden_dim):
         super(PoetryModel, self).__init__()
@@ -25,25 +33,36 @@ class PoetryModel(torch.nn.Module):
             h_0, c_0 = hidden
 
         embedds = self.embeddings(x)
+        # Inputs: input, (h_0, c_0)
+        # Outputs: output, (h_n, c_n)
         output, hidden = self.lstm(embedds, (h_0, c_0))
-        output = self.fc1(output.view(seq_len*batch_size,- 1))
+        output = self.fc1(output.view(seq_len*batch_size, - 1))
 
         return output, hidden
 
 
 def main():
-    embedding = torch.nn.Embedding(10, 3)
-    data = Variable(torch.LongTensor([[1, 2, 4, 5], [4, 3, 2, 9]]))
-    print(data,end="\n")
-    output = embedding(data)
+    # embedding = torch.nn.Embedding(10, 3)
+    # data = Variable(torch.LongTensor([[1, 2, 4, 5], [4, 3, 2, 9]]))
+    # print(data, end="\n")
+    # output = embedding(data)
+    # print(output)
+
+    # embedding1 = torch.nn.Embedding(10, 3, padding_idx=0)
+    # data1 = Variable(torch.LongTensor([[0, 2, 0, 5]]))
+    # print(data1, end="\n")
+    # output1 = embedding1(data1)
+    # print(output1)
+
+    x = Variable(torch.randn(5, 3, 10))
+    rnn = torch.nn.LSTM(10, 20, 2)
+    h0 = Variable(torch.randn(2, 3, 20))
+    c0 = Variable(torch.randn(2, 3, 20))
+    output, (h_n, c_n) = rnn(x, (h0, c0))
     print(output)
+    print(h_n)
+    print(c_n)
 
-
-    embedding1 = torch.nn.Embedding(10, 3,padding_idx=0)
-    data1 = Variable(torch.LongTensor([[0,2,0,5]]))
-    print(data1,end="\n")
-    output1 = embedding1(data1)
-    print(output1)
 
 if __name__ == '__main__':
     main()
