@@ -57,7 +57,7 @@ def main():
     eval_data = mnist.test.images  # Returns np.array
     eval_labels = np.asarray(mnist.test.labels, dtype=np.int32)
 
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn, model_dir="./models/tf_mnist_convnet_model")
+    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn, model_dir="mnist_model_cnn")
 
     tensors_to_log = {"probabilities": "softmax_tensor"}
     logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=50)
@@ -71,7 +71,7 @@ def main():
         shuffle=True
     )
 
-    mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook], steps=2000)
+    mnist_classifier.train(input_fn=train_input_fn, hooks=[logging_hook], steps=5000)
 
     # Evaluate the model
     eval_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -85,4 +85,9 @@ def main():
 
 
 if __name__ == '__main__':
+    tf.logging.set_verbosity(tf.logging.INFO)
+    
+    # tensorboard --logdir=mnist_model_cnn
+    # 打开http://localhost:6006 
+
     main()

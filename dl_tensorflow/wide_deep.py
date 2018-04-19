@@ -4,6 +4,7 @@ import tensorflow as tf
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
+tf.logging.set_verbosity(tf.logging.INFO)
 
 CSV_COLUMNS = [
     'age', 'workclass', 'fnlwgt', 'education', 'education_num',
@@ -106,7 +107,6 @@ def build_model(model_type: str, opt: Config):
     """
 
     wide_columns, deep_columns = build_columns()
-
     model = None
     if model_type == "wide":
 
@@ -114,22 +114,27 @@ def build_model(model_type: str, opt: Config):
             model_dir="./models/wide",
             feature_columns=wide_columns
         )
-
     elif model_type == "deep":
 
         model = tf.estimator.DNNClassifier(
             model_dir="./models/deep",
             feature_columns=deep_columns
         )
-
     else:
         # 宽度模型和深度模型通过将它们的最终输出的对数似然的和作为预测，然后将预测结果提供给对数损失函数
         model = tf.estimator.DNNLinearCombinedClassifier(
-            model_dir="./models/census_model",
+            model_dir="./models/wide_deep",
             linear_feature_columns=wide_columns,
             dnn_feature_columns=deep_columns,
             dnn_hidden_units=[100, 50]
         )
+
+    # loss = tf.losses.Reduction.SUM
+    # optimizer = tf.train.FtrlOptimizer(learning_rate=1e-3)
+    # train_op = optimizer.minimize(
+    #     loss=loss,
+    #     global_step=tf.train.get_global_step())
+    # return tf.estimator.EstimatorSpec(mode=model, loss=loss, train_op=train_op)
 
     return model
 
@@ -167,24 +172,30 @@ def train():
     test_file = './data/adult/adult.test'
 
     def train_input_fn():
-        return input_fn(
-            train_file, opt.between_evals, True, opt.batch_size)
+        return input_fn(train_file,
+                        opt.between_evals, True, opt.batch_size)
 
     def eval_input_fn():
         return input_fn(test_file, 1, False, opt.batch_size)
 
     model = build_model("wide_deep", opt)
     print("开始训练")
-    # 训练
-    for n in range(opt.epochs // opt.between_evals):
-        model.train(input_fn=train_input_fn)
-        # 评估
-        results = model.evaluate(input_fn=eval_input_fn)
-        print('Results at epoch', (n + 1) * opt.between_evals)
-        print('-' * 60)
 
-        for key in sorted(results):
-            print('%s: %s' % (key, results[key]))
+    model.train(input_fn=train_input_fn, steps=2000)
+    # 评估
+    results = model.evaluate(input_fn=eval_input_fn, steps=1)
+    for key in sorted(results):
+        print("%s: %s" % (key, results[key]))
+
+    # for n in range(opt.epochs // opt.between_evals):
+    #     model.train(input_fn=train_input_fn)
+    #     # 评估
+    #     results = model.evaluate(input_fn=eval_input_fn)
+    #     print('Results at epoch', (n + 1) * opt.between_evals)
+    #     print('-' * 60)
+
+    #     for key in sorted(results):
+    #         print('%s: %s' % (key, results[key]))
 
 
 if __name__ == '__main__':
