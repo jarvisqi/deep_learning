@@ -5,12 +5,13 @@ from torch.autograd import Variable
 import torchvision
 from tensorboardX import SummaryWriter
 
-torch.manual_seed(1024)  
-  
+torch.manual_seed(1024)
+
 nbatch_size = 128
 nclass = 10
-learning_rate=0.001
-epochs=10
+learning_rate = 0.001
+epochs = 10
+
 
 def load_data():
     # 获取数据
@@ -34,16 +35,19 @@ class CNN(torch.nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
 
-        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)      # Conv2d out: (16,28,28) 
-        self.relu1=torch.nn.ReLU()                                      
-        self.maxPool1 = torch.nn.MaxPool2d(kernel_size=2)                                           # MaxPool2d out: (16,14,14)  
+        # Conv2d out: (16,28,28)
+        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2)
+        self.relu1 = torch.nn.ReLU()
+        # MaxPool2d out: (16,14,14)
+        self.maxPool1 = torch.nn.MaxPool2d(kernel_size=2)
         self.dropout1 = torch.nn.Dropout(p=0.5)
 
-        self.conv2 = torch.nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2)     # Conv2d out: (32,14,14)  
-        self.relu2=torch.nn.ReLU()
-        self.maxPool2 = torch.nn.MaxPool2d(kernel_size=2)                                           # MaxPool2d out: (32,7,7)  
+        self.conv2 = torch.nn.Conv2d(in_channels=16, out_channels=32, kernel_size=5, padding=2)     # Conv2d out: (32,14,14)
+        self.relu2 = torch.nn.ReLU()
+        # MaxPool2d out: (32,7,7)
+        self.maxPool2 = torch.nn.MaxPool2d(kernel_size=2)
         self.dropout2 = torch.nn.Dropout(p=0.5)
-        
+
         self.fc1 = torch.nn.Linear(32*7*7, nclass)
 
     def forward(self, x):
@@ -69,8 +73,10 @@ def train():
     训练模型
     """
     train_data, test_data = load_data()
-    train_loader = torch.utils.data.DataLoader(dataset=train_data, batch_size=nbatch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset=test_data, batch_size=nbatch_size, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(
+        dataset=train_data, batch_size=nbatch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(
+        dataset=test_data, batch_size=nbatch_size, shuffle=True)
 
     model = CNN()
     model.train(True)
@@ -79,12 +85,13 @@ def train():
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    writer = SummaryWriter('./logs/troch/')
+    # writer = SummaryWriter('./logs/troch/')
     for epoch in range(epochs):
         train_loss, train_acc = 0.0, 0.0
         for step, (X_train, y_train) in enumerate(train_loader, 0):
             target = y_train.cuda()
-            X_train, y_train = Variable(X_train).cuda(), Variable(y_train).cuda()
+            X_train, y_train = Variable(
+                X_train).cuda(), Variable(y_train).cuda()
 
             optimizer.zero_grad()
             outputs = model(X_train)
@@ -99,17 +106,18 @@ def train():
 
         train_acc /= len(train_loader.dataset)
         train_loss /= len(train_loader.dataset)
-        
+
         print('Epoch {}/{}'.format(epoch+1, epochs))
         print('-' * 100)
-        print('train Loss: {:.4f} \t Acc: {:.4f}'.format(train_loss, train_acc), end=' ')
-                
-        writer.add_scalar('data/train_acc', train_acc, global_step=epoch)
-        writer.add_scalar('data/train_loss', train_loss, global_step=epoch)
+        print('train Loss: {:.4f} \t Acc: {:.4f}'.format(
+            train_loss, train_acc), end=' ')
+
+        # writer.add_scalar('data/train_acc', train_acc, global_step=epoch)
+        # writer.add_scalar('data/train_loss', train_loss, global_step=epoch)
 
         # 验证
         model.eval()
-        test_loss , test_acc = 0, 0
+        test_loss, test_acc = 0, 0
         for step, (X_test, y_test) in enumerate(test_loader, 0):
             acc_test = y_test.cuda()
             X_test, y_test = Variable(X_test).cuda(), Variable(y_test).cuda()
@@ -124,13 +132,21 @@ def train():
         print('\tval Loss: {:.4f} \t Acc: {:.4f}'.format(test_loss, test_acc))
         print(" ")
 
-        writer.add_scalar('data/test_acc', test_acc, global_step=epoch)
-        writer.add_scalar('data/test_loss', test_loss, global_step=epoch)
+    #     writer.add_scalar('data/test_acc', test_acc, global_step=epoch)
+    #     writer.add_scalar('data/test_loss', test_loss, global_step=epoch)
 
-    writer.close()
-    
-    torch.save(model, "./models/torch/mnist.pkl")    # 保存整个神经网络的结构和模型参数
-    torch.save(model.state_dict(), "./models/torch/mnist_params.pkl")   # 只保存神经网络的模型参数
+    # writer.close()
+
+    # 保存整个神经网络的结构和模型参数
+    torch.save(model, "./models/torch/mnist.pkl")
+    # 只保存神经网络的模型参数
+    torch.save(model.state_dict(), "./models/torch/mnist_params.pth")
+
+
+def load_model():
+    cnn = CNN()
+    cnn.state_dict(torch.load("./models/torch/mnist_params.pth"))
+    print(cnn)
 
 
 if __name__ == '__main__':
@@ -138,4 +154,6 @@ if __name__ == '__main__':
 
     # load_data()
 
-    train()
+    # train()
+
+    load_model()

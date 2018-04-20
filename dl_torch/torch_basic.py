@@ -91,6 +91,11 @@ def datatype():
     n_numpy = n_torch.numpy()            # Tensor变量 转为 numpy
     print(n_numpy)
 
+    x = torch.rand(2,1,3)
+    print(x)
+    xe = x.expand(2,3,3)  
+    print(xe)
+
 
 if __name__ == '__main__':
     # main()
