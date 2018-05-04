@@ -225,13 +225,13 @@ if __name__ == '__main__':
     resNet50 = ResNet(Bottleneck, [3, 4, 6, 3])
     # resNet101 = ResNet(Bottleneck, [3, 4, 23, 3])
 
-    # with SummaryWriter(log_dir="./logs/troch",comment='resNet101') as w:
-    #     w.add_graph(resNet101, (x, ))
-    y = resNet50(x)
-    # model = tv.models.resnet50()
-    # y = model(x)
-    print(y)
-    dot = make_dot(y, name="./images/resNet50",params=dict(list(resNet50.named_parameters()) + [('x', x)]))
-    # dot = make_dot(y, name="./images/resNet50",params=dict(list(model.named_parameters()) + [('x', x)]))
-    dot.format = "pdf"
-    dot.render()
+    with SummaryWriter(log_dir="./logs/troch",comment='resNet50') as w:
+        w.add_graph(resNet50, (x, ))
+    # y = resNet50(x)
+    # # model = tv.models.resnet50()
+    # # y = model(x)
+    # print(y)
+    # dot = make_dot(y, name="./images/resNet50",params=dict(list(resNet50.named_parameters()) + [('x', x)]))
+    # # dot = make_dot(y, name="./images/resNet50",params=dict(list(model.named_parameters()) + [('x', x)]))
+    # dot.format = "pdf"
+    # dot.render()
