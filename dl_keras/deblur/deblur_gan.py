@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from keras.applications.vgg16 import VGG16
+import keras.backend as K
 from keras.layers import Activation, Add, Input
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
@@ -116,9 +118,27 @@ class Gan(object):
         model = Model(inputs=inputs, outputs=[generated_image, outputs])
         return model
 
+    @staticmethod
+    def l1_loss(y_true, y_pred):
+        return K.mean(K.abs(y_pred - y_true))
+
+    @staticmethod
+    def perceptual_loss_100(y_true, y_pred):
+        return 100 * perceptual_loss(y_true, y_pred)
+
+    @staticmethod
+    def perceptual_loss(y, y_pred):
+        vgg = VGG16(include_top=False, weights="imagenet",input_shape=image_shape)
+        loss_model = Model(inputs=vgg.input, outputs=vgg.get_layer("block3_conv3").output)
+        loss_model.trainable = False
+        repr K.mean(K.squeeze(loss_model(y)-loss_model(y_pred)))
+    
+    @staticmethod
+    def wasserstein_loss(y_true, y_pred):
+        return K.mean(y_true*y_pred)
 
 if __name__ == '__main__':
-   
+
     g_model = Gan.generator_model()
     g_model.summary()
 
