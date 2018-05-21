@@ -131,7 +131,7 @@ class Gan(object):
         vgg = VGG16(include_top=False, weights="imagenet",input_shape=image_shape)
         loss_model = Model(inputs=vgg.input, outputs=vgg.get_layer("block3_conv3").output)
         loss_model.trainable = False
-        repr K.mean(K.squeeze(loss_model(y)-loss_model(y_pred)))
+        return K.mean(K.squeeze(loss_model(y)-loss_model(y_pred)))
     
     @staticmethod
     def wasserstein_loss(y_true, y_pred):
