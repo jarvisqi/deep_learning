@@ -163,7 +163,6 @@ def restore():
     x = torch.from_numpy(img).float()
     # 扩展 Tensor
     x = x.expand(1,1,img.shape[0],img.shape[1])
-    # CUDA
     x = x.to(device)
     print(x.shape)
     outputs = cnn(x)
@@ -181,4 +180,4 @@ if __name__ == '__main__':
 
     # train()
 
-    restore()
+    # restore()

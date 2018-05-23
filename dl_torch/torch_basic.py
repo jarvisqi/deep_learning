@@ -97,6 +97,16 @@ def datatype():
     print(xe)
 
 
+    x = torch.Tensor([[1], [2], [3]])
+    print(x)
+    print(x.size())
+    y = x.expand(1, 1, 3, 1)
+    print(y)
+    print(y.size())
+    
+    a = x.expand_as(y)
+    print(a.size())
+
 if __name__ == '__main__':
     # main()
 
