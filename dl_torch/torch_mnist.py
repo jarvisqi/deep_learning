@@ -159,9 +159,11 @@ def restore():
     print(cnn)
     img = read_one_image("./predict_img/numbers/1.jpg")
     print(img.shape)
-    x = np.expand_dims(img, axis=0)
-    x = np.expand_dims(x, axis=0)
-    x = torch.from_numpy(x).float()
+    # numpy 转  Tensor
+    x = torch.from_numpy(img).float()
+    # 扩展 Tensor
+    x = x.expand(1,1,img.shape[0],img.shape[1])
+    # CUDA
     x = x.to(device)
     print(x.shape)
     outputs = cnn(x)
