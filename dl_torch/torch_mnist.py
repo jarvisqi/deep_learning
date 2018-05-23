@@ -4,6 +4,7 @@ import torch
 from torch.autograd import Variable
 import torchvision
 from tensorboardX import SummaryWriter
+from skimage import io, transform
 
 torch.manual_seed(1024)
 
@@ -12,6 +13,7 @@ nclass = 10
 learning_rate = 0.001
 epochs = 10
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def load_data():
     # 获取数据
@@ -80,7 +82,7 @@ def train():
 
     model = CNN()
     model.train(True)
-    model.cuda()
+    model.to(device)
 
     loss_fn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -89,9 +91,8 @@ def train():
     for epoch in range(epochs):
         train_loss, train_acc = 0.0, 0.0
         for step, (X_train, y_train) in enumerate(train_loader, 0):
-            target = y_train.cuda()
-            X_train, y_train = Variable(
-                X_train).cuda(), Variable(y_train).cuda()
+            target = y_train.to(device)
+            X_train, y_train = X_train.to(device), y_train.to(device)
 
             optimizer.zero_grad()
             outputs = model(X_train)
@@ -119,11 +120,11 @@ def train():
         model.eval()
         test_loss, test_acc = 0, 0
         for step, (X_test, y_test) in enumerate(test_loader, 0):
-            acc_test = y_test.cuda()
-            X_test, y_test = Variable(X_test).cuda(), Variable(y_test).cuda()
+            acc_test = y_test.to(device)
+            X_test, y_test = X_test.to(device), y_test.to(device)
             outputs = model(X_test)
             loss = loss_fn(outputs, y_test)
-            y_pred = torch.max(outputs, 1)[1].cuda().data.squeeze()
+            y_pred = torch.max(outputs, 1)[1].to(device).data.squeeze()
             test_acc += torch.sum(y_pred == acc_test)
             test_loss += loss.data[0]
 
@@ -143,10 +144,32 @@ def train():
     torch.save(model.state_dict(), "./models/torch/mnist_params.pth")
 
 
-def load_model():
+def read_one_image(path):
+    img = io.imread(path, as_grey=True)
+    img = transform.resize(img, (28, 28), mode='reflect')
+
+    return np.asarray(img)
+
+
+def restore():
+    
     cnn = CNN()
-    cnn.state_dict(torch.load("./models/torch/mnist_params.pth"))
+    cnn.load_state_dict(torch.load("./models/torch/mnist_params.pth"))
+    cnn.to(device)
     print(cnn)
+    img = read_one_image("./predict_img/numbers/1.jpg")
+    print(img.shape)
+    x = np.expand_dims(img, axis=0)
+    x = np.expand_dims(x, axis=0)
+    x = torch.from_numpy(x).float()
+    x = x.to(device)
+    print(x.shape)
+    outputs = cnn(x)
+
+    _, predicted = torch.max(outputs, 1)
+    pred_y = torch.Tensor.argmax(outputs,1).data.cpu().numpy().squeeze()
+    print(predicted.data.cpu().numpy().squeeze())
+    print(pred_y)
 
 
 if __name__ == '__main__':
@@ -156,4 +179,4 @@ if __name__ == '__main__':
 
     # train()
 
-    load_model()
+    restore()

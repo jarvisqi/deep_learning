@@ -107,13 +107,13 @@ def read_one_image(path):
 
 def restore():
     model = torch.load("./models/torch/auto_encoder.pt")
-    img = read_one_image("./predict_img/numbers/9.jpg")
+    img = read_one_image("./predict_img/numbers/1.jpg")
     x = np.array([img.reshape(-1)])
     print(x.shape)
     x = torch.from_numpy(x).float()
     x = x.to(device)
     output = model(x)
-    pred_y = torch.Tensor.argmax(output[0]).data.cpu().numpy()
+    pred_y = torch.Tensor.argmax(output[0]).data.cpu().numpy().squeeze()
     print(pred_y)
 
 
