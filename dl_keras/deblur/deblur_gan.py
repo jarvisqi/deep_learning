@@ -61,7 +61,7 @@ class Gan(object):
         # 输出
         outputs = Add()([inputs, x])
         outputs = Lambda(lambda z: z/2)(outputs)
-
+        print("generator : ",outputs.shape)
         model = Model(inputs=inputs, outputs=outputs, name="Generator")
         return model
 
@@ -98,7 +98,7 @@ class Gan(object):
         x = Flatten()(x)
         x = Dense(1024, activation="tanh")(x)
         x = Dense(1, activation="sigmoid")(x)
-
+        
         model = Model(inputs=inputs, outputs=x, name="Discriminator")
         return model
 

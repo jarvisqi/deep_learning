@@ -5,39 +5,39 @@ import torch.utils.data as Data
 import torchvision
 
 
-class AutoEncoder(nn.Module):
+# class AutoEncoder(nn.Module):
 
-    def __init__(self):
-        super(AutoEncoder, self).__init__()
+#     def __init__(self):
+#         super(AutoEncoder, self).__init__()
 
-        # 压缩
-        self.encoder = nn.Sequential(
-            nn.Linear(28*28, 128),
-            nn.Tanh(),
-            nn.Linear(128, 64),
-            nn.Tanh(),
-            nn.Linear(64, 12),
-            nn.Tanh(),
-            nn.Linear(12, 3)                    # 压缩成3个特征, 进行 3D 图像可视化
-        )
+#         # 压缩
+#         self.encoder = nn.Sequential(
+#             nn.Linear(28*28, 128),
+#             nn.Tanh(),
+#             nn.Linear(128, 64),
+#             nn.Tanh(),
+#             nn.Linear(64, 12),
+#             nn.Tanh(),
+#             nn.Linear(12, 3)                    # 压缩成3个特征, 进行 3D 图像可视化
+#         )
 
-        # 解压
-        self.decoder = nn.Sequential(
-            nn.Linear(3,12),
-            nn.Tanh(),
-            nn.Linear(12,64),
-            nn.Tanh(),
-            nn.Linear(64,128),
-            nn.Tanh(),
-            nn.Linear(128,28*28),
-            nn.Sigmoid()                        # 激活函数让输出值在 (0, 1)
-        )
+#         # 解压
+#         self.decoder = nn.Sequential(
+#             nn.Linear(3,12),
+#             nn.Tanh(),
+#             nn.Linear(12,64),
+#             nn.Tanh(),
+#             nn.Linear(64,128),
+#             nn.Tanh(),
+#             nn.Linear(128,28*28),
+#             nn.Sigmoid()                        # 激活函数让输出值在 (0, 1)
+#         )
 
-    def forward(self, x):
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
+#     def forward(self, x):
+#         encoded = self.encoder(x)
+#         decoded = self.decoder(encoded)
 
-        return encoded, decoded
+#         return encoded, decoded
 
 
 def train():
@@ -77,6 +77,23 @@ def train():
             if step % 100 == 0:
                 print('Epoch: ', epoch, '| train loss: %.4f' % loss.data[0])
 
+    # 由于pickle序列化是序列了整个对象，而非某个内存地址，因此在反序列化时，也调用了整个序列对象
+    # 需要在序列化和反序列化定义相同的函数名称，但内容可以不一样。否则报错如下：
+    # AttributeError: Can't get attribute 'sayhi' on <module '__main__' from
+
+    torch.save(net,"./models/torch/auto_encoder.pt")
+
+
+def restore():
+    model = torch.load("./models/torch/auto_encoder.pt")
+    print(model)
+
+
+class AutoEncoder(nn.Module):
+    pass
+    
 
 if __name__ == '__main__':
-    train()
+    # train()
+
+    restore()
