@@ -128,6 +128,18 @@ def train():
     print(classification_report(y_test, predictions))
 
 
+def conv():
+    """卷积运算
+    """
+    from scipy import signal
+    # 滤波器filter尺寸为3x3
+    c_filter = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
+    c_W = np.array([[3, 0, 1], [1, 5, 8], [2, 7, 2]])
+    cv = signal.convolve2d(c_filter, c_W, mode='valid')
+    print(cv)
+
+
+
 if __name__ == '__main__':
     train()
 
